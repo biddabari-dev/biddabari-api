@@ -1,0 +1,54 @@
+.main-color {color: #F18C53}
+.border-main-color {border: 1px solid #F18C53}
+.all-course-page-nav-pills .active{background-color: #F18C53!important; color: white!important;}
+.all-course-page-nav-pills li button:hover {background-color: #CACACA}
+.bg-default-color{background-color: #F18C53!important;}
+
+/*from foysal vai start*/
+.courses-details-sidebar{
+    margin-top: 0px !important;
+}
+.navbar-area-3{
+    box-shadow: 0px 0px 14px #000;
+/box-shadow: 0px 0px 10px #7c4c47;/
+position: relative;
+    z-index: 99999;
+    position: relative;
+    width: 100%;
+    left: 0;
+}
+.pt-15{
+    padding-top: 15px;
+}
+
+.courses-details-list li{
+    font-size: 25px;
+}
+.courses-details-list li span{
+    font-size: 25px;
+    float: right;
+}
+.courses-details-list li i{
+    position: relative;
+    top: 9px;
+}
+.courses-details-sidebar .content .default-btn{
+    font-size: 30px;
+}
+.footer-widget p {
+    font-size: 21px;
+}
+.footer-widget .footer-list li a {
+    font-size: 21px;
+}
+.footer-widget .footer-contact li .content span {
+    font-size: 20px;
+}
+.footer-widget .footer-contact li .content h4 {
+    font-size: 21px;
+}
+
+.contact-form p{
+    font-size: 20px;
+}
+/*from foysal vai end*/
