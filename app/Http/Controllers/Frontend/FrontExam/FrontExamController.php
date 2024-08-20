@@ -902,12 +902,70 @@ class FrontExamController extends Controller
         ];
         return ViewHelper::checkViewForApi($this->data, 'frontend.exams.course.show-ans');
     }
+
+    public function showCourseClassExamAnswers($contentId)
+    {
+        $this->sectionContent = CourseSectionContent::whereId($contentId)->select('id', 'course_section_id', 'parent_id', 'content_type', 'title', 'status', 'exam_end_time_timestamp')->with(['questionStoresForClassXm' => function($questionStores){
+            $questionStores->select('id', 'question_type', 'question', 'question_description', 'question_image', 'question_video_link', 'written_que_ans', 'written_que_ans_description', 'has_all_wrong_ans', 'status', 'mcq_ans_description')->with('questionOptions')->get();
+        }])->first();
+
+        // dd($this->sectionContent);
+
+        //        student xm perticipant check
+        $xmAllResults   = CourseClassExamResult::where('course_section_content_id', $contentId)->get();
+        $userXmPerticipateStatus = false;
+        foreach ($xmAllResults as $xmSingleResult)
+        {
+            if ($xmSingleResult->user_id == ViewHelper::loggedUser()->id )
+            {
+                $userXmPerticipateStatus    = true;
+                break;
+            }
+        }
+        if (strtotime(currentDateTimeYmdHi()) > $this->sectionContent->exam_end_time_timestamp)
+        {
+            $userXmPerticipateStatus = true;
+        }
+        if (!$userXmPerticipateStatus)
+        {
+            return ViewHelper::returEexceptionError('You can\'t view the answers till exam ends.');
+        }
+        //        student xm perticipant check ends
+
+
+
+        if ($this->sectionContent->content_type == 'video')
+        {
+            $getProvidedAnswers = CourseClassExamResult::where(['course_section_content_id' => $contentId, 'user_id' => ViewHelper::loggedUser()->id])->first();
+
+            if (isset($getProvidedAnswers->provided_ans))
+            {
+                $this->ansLoop($this->sectionContent, (array) json_decode($getProvidedAnswers->provided_ans));
+            }
+        } elseif ($this->sectionContent->content_type == 'written_exam')
+        {
+            $writtenXmFile = CourseClassExamResult::where(['xm_type' => 'written_exam', 'course_section_content_id' => $contentId,'user_id'=>ViewHelper::loggedUser()->id])->select('id', 'course_section_content_id', 'xm_type', 'user_id', 'written_xm_file')->first();
+            if (str()->contains(url()->current(), '/api/'))
+            {
+                $writtenXmFile = $writtenXmFile->written_xm_file;
+            }
+        }
+
+        // dd($this->sectionContent['questionStoresForClassXm'][0]);
+
+
+        $this->data = [
+            'content'   => $this->sectionContent,
+            'writtenFile' => $writtenXmFile ?? null
+        ];
+        return ViewHelper::checkViewForApi($this->data, 'frontend.exams.course.class.show-ans');
+    }
+
     public function showBatchExamAnswers($contentId)
     {
         $this->sectionContent = BatchExamSectionContent::whereId($contentId)->select('id', 'batch_exam_section_id', 'parent_id', 'content_type', 'title', 'status')->with(['questionStores' => function($questionStores){
             $questionStores->select('id', 'question_type', 'question', 'question_description', 'question_image', 'question_video_link', 'written_que_ans', 'written_que_ans_description', 'has_all_wrong_ans', 'status', 'mcq_ans_description')->with('questionOptions')->get();
         }])->first();
-//        $providedAnswers = (array) json_decode(BatchExamResult::where(['batch_exam_section_content_id' => $contentId, 'user_id' => ViewHelper::loggedUser()->id])->first()->provided_ans);
         if ($this->sectionContent->content_type == 'exam')
         {
             $getProvidedAnswers = BatchExamResult::where(['batch_exam_section_content_id' => $contentId, 'user_id' => ViewHelper::loggedUser()->id])->first();

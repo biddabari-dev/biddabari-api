@@ -199,7 +199,7 @@ class StudentController extends Controller
     public function myOrders ()
     {
 //        $this->courseOrders = CourseOrder::where('user_id', auth()->id())->select('id', 'course_id', 'user_id', 'status')->with('course:id,title,price')->get();
-        $this->courseOrders = ParentOrder::where(['user_id' => auth()->id()])->select('id', 'parent_model_id', 'user_id', 'order_invoice_number', 'ordered_for', 'total_amount', 'paid_amount', 'payment_status', 'status')->with('course:id,title,price', 'batchExam:id,title,price','product:id,title,price')->get();
+        $this->courseOrders = ParentOrder::where(['user_id' => auth()->id()])->select('id', 'parent_model_id', 'user_id', 'order_invoice_number', 'ordered_for', 'total_amount', 'paid_amount', 'payment_status', 'status')->with('course:id,title,price,slug', 'batchExam:id,title,price,slug','product:id,title,price,slug')->get();
         $this->data = [
             'orders'  => $this->courseOrders
         ];

@@ -133,6 +133,7 @@ Route::prefix('v1')->name('api.')->group(function (){
             Route::get('show-pdf/{content_id}/{type?}', [StudentController::class, 'showPdf']);
 
             Route::get('show-course-exam-answers/{content_id}/{slug?}', [FrontExamController::class, 'showCourseExamAnswers']);
+            Route::get('show-class-exam-answers/{content_id}/{slug?}', [FrontExamController::class, 'showCourseClassExamAnswers']);
             Route::get('show-batch-exam-answers/{content_id}/{slug?}', [FrontExamController::class, 'showBatchExamAnswers']);
         });
 
