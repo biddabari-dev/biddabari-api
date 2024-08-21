@@ -58,7 +58,8 @@ class FrontendViewController extends Controller
 
     public function productDetails($id, $slug = null)
     {
-        $this->product = Product::where('id',$id)->select('id', 'product_author_id', 'title', 'image', 'featured_pdf', 'pdf', 'slug', 'description','price','discount_amount','discount_start_date','discount_end_date','about','specification','other_details' , 'stock_amount', 'is_featured', 'status')->first();
+        // dd($id);
+        $this->product = Product::where('slug',$id)->select('id', 'product_author_id', 'title', 'image', 'featured_pdf', 'pdf', 'slug', 'description','price','discount_amount','discount_start_date','discount_end_date','about','specification','other_details' , 'stock_amount', 'is_featured', 'status')->first();
         if (!empty($this->product->discount_start_date) && !empty($this->product->discount_end_date))
         {
             if (Carbon::now()->between(dateTimeFormatYmdHi($this->product->discount_start_date), dateTimeFormatYmdHi($this->product->discount_end_date)))
