@@ -857,6 +857,21 @@ class FrontExamController extends Controller
             $questionStores->select('id', 'question_type', 'question', 'question_description', 'question_image', 'question_video_link', 'written_que_ans', 'written_que_ans_description', 'has_all_wrong_ans', 'status', 'mcq_ans_description')->with('questionOptions')->get();
         }])->first();
 
+
+        $this->courseExamResults = CourseExamResult::where(['course_section_content_id' => $contentId])->orderBy('result_mark', 'DESC')->orderBy('required_time', 'ASC')->with(['courseSectionContent' => function($courseSectionContent) {
+            $courseSectionContent->select('id',  'course_section_id', 'exam_total_questions','exam_per_question_mark', 'written_total_questions')->first();
+        },
+            'user'])->get();
+        $myRank = [];
+        foreach ($this->courseExamResults as $index => $courseExamResult)
+        {
+            if ($courseExamResult->user_id == ViewHelper::loggedUser()->id)
+            {
+                $myRank = $courseExamResult;
+                $myRank['position'] = ++$index;
+            }
+        }
+
         //        student xm perticipant check
         $xmAllResults   = CourseExamResult::where('course_section_content_id', $contentId)->get();
         $userXmPerticipateStatus = false;
@@ -898,7 +913,9 @@ class FrontExamController extends Controller
 
         $this->data = [
             'content'   => $this->sectionContent,
-            'writtenFile' => $writtenXmFile ?? null
+            'writtenFile' => $writtenXmFile ?? null,
+            'myPosition'    => $myRank,
+
         ];
         return ViewHelper::checkViewForApi($this->data, 'frontend.exams.course.show-ans');
     }
@@ -981,9 +998,25 @@ class FrontExamController extends Controller
                 $writtenXmFile = $writtenXmFile->written_xm_file;
             }
         }
+
+        $this->courseExamResults = BatchExamResult::where(['batch_exam_section_content_id' => $contentId])->orderBy('result_mark', 'DESC')->orderBy('required_time', 'ASC')->with(['batchExamSectionContent' => function($batchExamSectionContent) {
+            $batchExamSectionContent->select('id',  'batch_exam_section_id', 'exam_total_questions','exam_per_question_mark', 'written_total_questions')->first();
+        },
+            'user'])->get();
+        $myRank = [];
+        foreach ($this->courseExamResults as $index => $courseExamResult)
+        {
+            if ($courseExamResult->user_id == ViewHelper::loggedUser()->id)
+            {
+                $myRank = $courseExamResult;
+                $myRank['position'] = ++$index;
+            }
+        }
         $this->data = [
             'content'   => $this->sectionContent,
-            'writtenFile' => $writtenXmFile ?? null
+            'writtenFile' => $writtenXmFile ?? null,
+            'myPosition'    => $myRank
+
         ];
         return ViewHelper::checkViewForApi($this->data, 'frontend.exams.batch-exam.show-ans');
     }
