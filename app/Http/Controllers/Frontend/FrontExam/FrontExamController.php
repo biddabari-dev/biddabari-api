@@ -1075,7 +1075,7 @@ class FrontExamController extends Controller
     public function showCourseExamRanking($contentId)
     {
         $this->courseExamResults = CourseExamResult::where(['course_section_content_id' => $contentId])->orderBy('result_mark', 'DESC')->orderBy('required_time', 'ASC')->with(['courseSectionContent' => function($courseSectionContent) {
-            $courseSectionContent->select('id',  'course_section_id', 'exam_total_questions','exam_per_question_mark', 'written_total_questions')->first();
+            $courseSectionContent->select('id',  'course_section_id', 'exam_total_questions','exam_per_question_mark', 'written_total_questions','exam_duration_in_minutes','written_exam_duration_in_minutes')->first();
         },
             'user'])->get();
         $myRank = [];
@@ -1099,7 +1099,7 @@ class FrontExamController extends Controller
     public function showBatchExamRanking($contentId)
     {
         $this->courseExamResults = BatchExamResult::where(['batch_exam_section_content_id' => $contentId])->orderBy('result_mark', 'DESC')->orderBy('required_time', 'ASC')->with(['batchExamSectionContent' => function($batchExamSectionContent) {
-            $batchExamSectionContent->select('id',  'batch_exam_section_id', 'exam_total_questions','exam_per_question_mark', 'written_total_questions')->first();
+            $batchExamSectionContent->select('id',  'batch_exam_section_id', 'exam_total_questions','exam_per_question_mark', 'written_total_questions','exam_duration_in_minutes','written_exam_duration_in_minutes')->first();
         },
             'user'])->get();
         $myRank = [];
