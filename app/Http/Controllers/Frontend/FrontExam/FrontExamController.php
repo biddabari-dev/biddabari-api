@@ -853,7 +853,7 @@ class FrontExamController extends Controller
 
     public function showCourseExamAnswers($contentId)
     {
-        $this->sectionContent = CourseSectionContent::whereId($contentId)->select('id', 'course_section_id', 'parent_id', 'content_type', 'title', 'status', 'exam_end_time_timestamp')->with(['questionStores' => function($questionStores){
+        $this->sectionContent = CourseSectionContent::whereId($contentId)->select('id', 'course_section_id', 'parent_id', 'content_type', 'title', 'status', 'exam_end_time_timestamp','exam_duration_in_minutes','written_exam_duration_in_minutes')->with(['questionStores' => function($questionStores){
             $questionStores->select('id', 'question_type', 'question', 'question_description', 'question_image', 'question_video_link', 'written_que_ans', 'written_que_ans_description', 'has_all_wrong_ans', 'status', 'mcq_ans_description')->with('questionOptions')->get();
         }])->first();
 
@@ -922,7 +922,7 @@ class FrontExamController extends Controller
 
     public function showCourseClassExamAnswers($contentId)
     {
-        $this->sectionContent = CourseSectionContent::whereId($contentId)->select('id', 'course_section_id', 'parent_id', 'content_type', 'title', 'status', 'exam_end_time_timestamp')->with(['questionStoresForClassXm' => function($questionStores){
+        $this->sectionContent = CourseSectionContent::whereId($contentId)->select('id', 'course_section_id', 'parent_id', 'content_type', 'title', 'status', 'exam_end_time_timestamp','exam_duration_in_minutes','written_exam_duration_in_minutes')->with(['questionStoresForClassXm' => function($questionStores){
             $questionStores->select('id', 'question_type', 'question', 'question_description', 'question_image', 'question_video_link', 'written_que_ans', 'written_que_ans_description', 'has_all_wrong_ans', 'status', 'mcq_ans_description')->with('questionOptions')->get();
         }])->first();
 
@@ -980,7 +980,7 @@ class FrontExamController extends Controller
 
     public function showBatchExamAnswers($contentId)
     {
-        $this->sectionContent = BatchExamSectionContent::whereId($contentId)->select('id', 'batch_exam_section_id', 'parent_id', 'content_type', 'title', 'status')->with(['questionStores' => function($questionStores){
+        $this->sectionContent = BatchExamSectionContent::whereId($contentId)->select('id', 'batch_exam_section_id', 'parent_id', 'content_type', 'title', 'status','exam_duration_in_minutes','written_exam_duration_in_minutes')->with(['questionStores' => function($questionStores){
             $questionStores->select('id', 'question_type', 'question', 'question_description', 'question_image', 'question_video_link', 'written_que_ans', 'written_que_ans_description', 'has_all_wrong_ans', 'status', 'mcq_ans_description')->with('questionOptions')->get();
         }])->first();
         if ($this->sectionContent->content_type == 'exam')
@@ -1023,6 +1023,7 @@ class FrontExamController extends Controller
 
     public function ansLoop($sectionContent, $providedAnswers)
     {
+        // dd($sectionContent->questionStores);
         foreach ($sectionContent->questionStores as $questionStore)
         {
             foreach ($questionStore->questionOptions as $questionOption)
@@ -1042,7 +1043,30 @@ class FrontExamController extends Controller
                         break;
                     } else {
                         $questionOption->my_ans = 2;
-//                        $questionOption->my_ans = 'x';
+                    }
+                }
+            }
+        }
+
+        foreach ($sectionContent->questionStoresForClassXm as $questionStore)
+        {
+            foreach ($questionStore->questionOptions as $questionOption)
+            {
+                foreach ($providedAnswers as $questionId => $providedAnswer)
+                {
+                    if($questionStore->id == $questionId){
+                        $questionStore->has_answered=1;
+                    }
+                    if ($questionId == $questionStore->id && $questionOption->is_correct == 1 && $questionOption->id == $providedAnswer->answer)
+                    {
+                        $questionOption->my_ans = 1;
+                        break;
+                    } elseif ($questionId == $questionStore->id && $questionOption->is_correct == 0 && $questionOption->id == $providedAnswer->answer)
+                    {
+                        $questionOption->my_ans = 0;
+                        break;
+                    } else {
+                        $questionOption->my_ans = 2;
                     }
                 }
             }
