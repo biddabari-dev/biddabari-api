@@ -100,10 +100,16 @@ class StudentController extends Controller
             }])->get();
         }])->first();
 
+
         foreach ($this->course->courseSections as $courseSection)
         {
             foreach ($courseSection->courseSectionContents as $courseSectionContent)
             {
+                if ($courseSectionContent->written_exam_duration_in_minutes != null) {
+                    # code...
+                    $courseSectionContent->written_exam_duration_in_minutes = (int)$courseSectionContent->written_exam_duration_in_minutes;
+                }
+
                 if ($courseSectionContent->has_class_xm == 1)
                 {
                     $courseSectionContent->classXmStatus = ViewHelper::checkClassXmStatus($courseSectionContent);
