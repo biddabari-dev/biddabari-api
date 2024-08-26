@@ -74,6 +74,10 @@ Route::prefix('v1')->name('api.')->group(function (){
     Route::get('/product-details/{id}/{slug?}', [FrontendViewController::class, 'productDetails']);
     Route::post('/place-product-order', [FrontendViewController::class, 'placeProductOrder']);
 
+    //
+    Route::get('/all-teachers', [FrontendViewController::class, 'allTeachers']);
+    Route::get('/teacher/{id}', [FrontendViewController::class, 'findTeacher']);
+
     Route::get('/free-courses', [BasicViewController::class, 'freeCourses']);
     Route::get('/all-job-circulars', [FrontendViewController::class, 'allJobCirculars']);
     Route::get('/job-circular-details/{id}/{slug?}', [FrontendViewController::class, 'jobCircularDetail']);
