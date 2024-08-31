@@ -850,7 +850,7 @@ class FrontExamController extends Controller
             return back()->with('error','Please Login First.');
         }
     }
-
+// course exam
     public function showCourseExamAnswers($contentId)
     {
         $this->sectionContent = CourseSectionContent::whereId($contentId)->select('id', 'course_section_id', 'parent_id', 'content_type', 'title', 'status', 'exam_end_time_timestamp','exam_duration_in_minutes','written_exam_duration_in_minutes')->with(['questionStores' => function($questionStores){
@@ -862,6 +862,7 @@ class FrontExamController extends Controller
             $courseSectionContent->select('id',  'course_section_id', 'exam_total_questions','exam_per_question_mark', 'written_total_questions')->first();
         },
             'user'])->get();
+
         $myRank = [];
         foreach ($this->courseExamResults as $index => $courseExamResult)
         {
@@ -919,7 +920,7 @@ class FrontExamController extends Controller
         ];
         return ViewHelper::checkViewForApi($this->data, 'frontend.exams.course.show-ans');
     }
-
+// class exam
     public function showCourseClassExamAnswers($contentId)
     {
         $this->sectionContent = CourseSectionContent::whereId($contentId)->select('id', 'course_section_id', 'parent_id', 'content_type', 'title', 'status', 'exam_end_time_timestamp','exam_duration_in_minutes','written_exam_duration_in_minutes')->with(['questionStoresForClassXm' => function($questionStores){
@@ -928,18 +929,34 @@ class FrontExamController extends Controller
 
         // dd($this->sectionContent);
 
-        //        student xm perticipant check
-        $xmAllResults   = CourseClassExamResult::where('course_section_content_id', $contentId)->get();
+        $this->courseExamResults = CourseClassExamResult::where(['course_section_content_id' => $contentId])->orderBy('result_mark', 'DESC')->orderBy('required_time', 'ASC')->with(['courseSectionContent' => function($courseSectionContent) {
+            $courseSectionContent->select('id',  'course_section_id', 'exam_total_questions','exam_per_question_mark', 'written_total_questions')->first();
+        },
+            'user'])->get();
+
+        $myRank = [];
+        foreach ($this->courseExamResults as $index => $courseExamResult)
+        {
+            if ($courseExamResult->user_id == ViewHelper::loggedUser()->id )
+            {
+                $myRank = $courseExamResult;
+                $myRank['position'] = ++$index;
+            }
+        }
+
+        //student xm perticipant check
+        $xmAllResults   = CourseExamResult::where('course_section_content_id', $contentId)->get();
         $userXmPerticipateStatus = false;
         foreach ($xmAllResults as $xmSingleResult)
         {
             if ($xmSingleResult->user_id == ViewHelper::loggedUser()->id )
             {
-                $userXmPerticipateStatus    = true;
+                $userXmPerticipateStatus = true;
                 break;
             }
         }
-        if (strtotime(currentDateTimeYmdHi()) > $this->sectionContent->exam_end_time_timestamp)
+
+        if (strtotime(currentDateTimeYmdHi()) > isset($this->sectionContent->exam_end_time_timestamp))
         {
             $userXmPerticipateStatus = true;
         }
@@ -951,7 +968,9 @@ class FrontExamController extends Controller
 
 
 
-        if ($this->sectionContent->content_type == 'video')
+
+
+        if (isset($this->sectionContent->content_type) == 'video')
         {
             $getProvidedAnswers = CourseClassExamResult::where(['course_section_content_id' => $contentId, 'user_id' => ViewHelper::loggedUser()->id])->first();
 
@@ -959,7 +978,7 @@ class FrontExamController extends Controller
             {
                 $this->ansLoop($this->sectionContent, (array) json_decode($getProvidedAnswers->provided_ans));
             }
-        } elseif ($this->sectionContent->content_type == 'written_exam')
+        } elseif (isset($this->sectionContent->content_type) == 'written_exam')
         {
             $writtenXmFile = CourseClassExamResult::where(['xm_type' => 'written_exam', 'course_section_content_id' => $contentId,'user_id'=>ViewHelper::loggedUser()->id])->select('id', 'course_section_content_id', 'xm_type', 'user_id', 'written_xm_file')->first();
             if (str()->contains(url()->current(), '/api/'))
@@ -973,7 +992,8 @@ class FrontExamController extends Controller
 
         $this->data = [
             'content'   => $this->sectionContent,
-            'writtenFile' => $writtenXmFile ?? null
+            'writtenFile' => $writtenXmFile ?? null,
+            'myPosition'    => $myRank,
         ];
         return ViewHelper::checkViewForApi($this->data, 'frontend.exams.course.class.show-ans');
     }
