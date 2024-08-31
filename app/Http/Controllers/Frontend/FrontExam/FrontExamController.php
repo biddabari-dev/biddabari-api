@@ -970,10 +970,45 @@ class FrontExamController extends Controller
 
         // dd($this->sectionContent['questionStoresForClassXm'][0]);
 
+        if ($this->sectionContent->content_type == 'video') {
+            # code...
+            $myRank = [];
+            if ($getProvidedAnswers != null) {
+                # code...
+                foreach ($getProvidedAnswers as $index => $courseExamResult)
+                {
+                    if ($courseExamResult->user_id == ViewHelper::loggedUser()->id)
+                    {
+                        $myRank = $courseExamResult;
+                        $myRank['position'] = ++$index;
+                    }
+                }
+            }
+
+        }else{
+
+            $myRank = [];
+            if ($writtenXmFile != null) {
+                # code...
+                foreach ($writtenXmFile as $index => $courseExamResult)
+                {
+                    if ($courseExamResult->user_id == ViewHelper::loggedUser()->id)
+                    {
+                        $myRank = $courseExamResult;
+                        $myRank['position'] = ++$index;
+                    }
+                }
+            }
+
+        }
+
+
+
 
         $this->data = [
             'content'   => $this->sectionContent,
-            'writtenFile' => $writtenXmFile ?? null
+            'writtenFile' => $writtenXmFile ?? null,
+            'myPosition'    => $myRank,
         ];
         return ViewHelper::checkViewForApi($this->data, 'frontend.exams.course.class.show-ans');
     }
@@ -1117,7 +1152,6 @@ class FrontExamController extends Controller
         ];
         return ViewHelper::checkViewForApi($this->data, 'frontend.exams.batch-exam.show-ranking');
     }
-
     public function pdfViewTest ()
     {
 //        return Response::make(file_get_contents('assets/pdf-demo.pdf'), 200, [
