@@ -37,7 +37,7 @@ function imageUpload ($image, $imageDirectory, $imageNameString = null, $width =
             $image->move($imageDirectory, $imageName);
         } else {
 
-            $images = Image::make($image)->save($imageUrl,65);
+            //$images = Image::make($image)->save($imageUrl,65);
 
 
             $prefix = '';
