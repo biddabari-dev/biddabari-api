@@ -923,7 +923,7 @@ class FrontExamController extends Controller
 // class exam
     public function showCourseClassExamAnswers($contentId)
     {
-        $this->sectionContent = CourseSectionContent::whereId($contentId)->select('id', 'course_section_id', 'parent_id', 'content_type', 'title', 'status', 'exam_end_time_timestamp','exam_duration_in_minutes','written_exam_duration_in_minutes')->with(['questionStoresForClassXm' => function($questionStores){
+        $this->sectionContent = CourseSectionContent::whereId($contentId)->select('id', 'course_section_id', 'parent_id', 'content_type', 'title', 'status', 'exam_end_time_timestamp','exam_duration_in_minutes','written_exam_duration_in_minutes','class_xm_duration_in_minutes')->with(['questionStoresForClassXm' => function($questionStores){
             $questionStores->select('id', 'question_type', 'question', 'question_description', 'question_image', 'question_video_link', 'written_que_ans', 'written_que_ans_description', 'has_all_wrong_ans', 'status', 'mcq_ans_description')->with('questionOptions')->get();
         }])->first();
 
@@ -988,6 +988,45 @@ class FrontExamController extends Controller
         }
 
         // dd($this->sectionContent['questionStoresForClassXm'][0]);
+
+        $this->courseExamResults = CourseClassExamResult::where(['course_section_content_id' => $contentId])->orderBy('result_mark', 'DESC')->orderBy('required_time', 'ASC')->with(['courseSectionContent' => function($courseSectionContent) {
+            $courseSectionContent->select('id',  'course_section_id', 'exam_total_questions','exam_per_question_mark', 'written_total_questions')->first();
+        },
+            'user'])->get();
+
+        if ($this->sectionContent->content_type == 'video') {
+            # code...
+            $myRank = [];
+            if ($this->courseExamResults != null) {
+                # code...
+                foreach ($this->courseExamResults as $index => $courseExamResult)
+                {
+                    if ($courseExamResult->user_id == ViewHelper::loggedUser()->id)
+                    {
+                        $myRank = $courseExamResult;
+                        $myRank['position'] = ++$index;
+                    }
+                }
+            }
+
+        }else{
+
+            $myRank = [];
+            if ($this->courseExamResults != null) {
+                # code...
+                foreach ($this->courseExamResults as $index => $courseExamResult)
+                {
+                    if ($courseExamResult->user_id == ViewHelper::loggedUser()->id)
+                    {
+                        $myRank = $courseExamResult;
+                        $myRank['position'] = ++$index;
+                    }
+                }
+            }
+
+        }
+
+
 
 
         $this->data = [
@@ -1095,7 +1134,7 @@ class FrontExamController extends Controller
     public function showCourseExamRanking($contentId)
     {
         $this->courseExamResults = CourseExamResult::where(['course_section_content_id' => $contentId])->orderBy('result_mark', 'DESC')->orderBy('required_time', 'ASC')->with(['courseSectionContent' => function($courseSectionContent) {
-            $courseSectionContent->select('id',  'course_section_id', 'exam_total_questions','exam_per_question_mark', 'written_total_questions')->first();
+            $courseSectionContent->select('id',  'course_section_id', 'exam_total_questions','exam_per_question_mark', 'written_total_questions','exam_duration_in_minutes','written_exam_duration_in_minutes')->first();
         },
             'user'])->get();
         $myRank = [];
@@ -1119,7 +1158,7 @@ class FrontExamController extends Controller
     public function showBatchExamRanking($contentId)
     {
         $this->courseExamResults = BatchExamResult::where(['batch_exam_section_content_id' => $contentId])->orderBy('result_mark', 'DESC')->orderBy('required_time', 'ASC')->with(['batchExamSectionContent' => function($batchExamSectionContent) {
-            $batchExamSectionContent->select('id',  'batch_exam_section_id', 'exam_total_questions','exam_per_question_mark', 'written_total_questions')->first();
+            $batchExamSectionContent->select('id',  'batch_exam_section_id', 'exam_total_questions','exam_per_question_mark', 'written_total_questions','exam_duration_in_minutes','written_exam_duration_in_minutes')->first();
         },
             'user'])->get();
         $myRank = [];
@@ -1137,7 +1176,6 @@ class FrontExamController extends Controller
         ];
         return ViewHelper::checkViewForApi($this->data, 'frontend.exams.batch-exam.show-ranking');
     }
-
     public function pdfViewTest ()
     {
 //        return Response::make(file_get_contents('assets/pdf-demo.pdf'), 200, [
