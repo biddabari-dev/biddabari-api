@@ -129,7 +129,8 @@ class BasicViewController extends Controller
             $datum->image = asset($datum->image);
             if ($datum->content_type == 'course')
             {
-                $datum->parent_model_id = explode('/', explode('course-details/', $datum->link)[1])[0];
+                // dd($datum);
+                $datum->parent_model_id = explode('/', explode('course-details/', $datum->link)[1] ?? null)[0];
             } elseif ($datum->content_type == 'book')
             {
                 $datum->parent_model_id = explode('/', explode('product-details/', $datum->link)[1])[0];
