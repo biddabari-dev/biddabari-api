@@ -37,8 +37,7 @@ function imageUpload ($image, $imageDirectory, $imageNameString = null, $width =
             $image->move($imageDirectory, $imageName);
         } else {
 
-            //$images = Image::make($image)->save($imageUrl,65);
-
+            // $images = Image::make($image)->save($imageUrl,65);
 
             $prefix = '';
             $config = [
@@ -62,7 +61,7 @@ function imageUpload ($image, $imageDirectory, $imageNameString = null, $width =
             $result = $client->putObject([
                 'Bucket' => 'biddabari-bucket',
                 'Key' => $imageUrl,
-                'SourceFile' => $imageUrl,
+                'SourceFile' => $image,
                 ]);
 
             if (file_exists($imageUrl))
@@ -91,6 +90,7 @@ function userCertificateUpload ($fileObject, $directory, $nameString = null)
 
 function fileUpload ($fileObject, $directory, $nameString = null, $modelFileUrl = null)
 {
+    // dd($nameString);
     if ($fileObject)
     {
         if (isset($modelFileUrl))
@@ -100,9 +100,9 @@ function fileUpload ($fileObject, $directory, $nameString = null, $modelFileUrl 
                 unlink($modelFileUrl);
             }
         }
-        $fileName       = $nameString.str_replace(' ', '-', pathinfo($fileObject->getClientOriginalName(), PATHINFO_FILENAME)).'_'.rand(100,100000).'.'.$fileObject->extension();
-        $fileDirectory  = 'backend/assets/uploaded-files/'.$directory.'/';
-        $fileObject->move($fileDirectory, $fileName);
+        $fileName       = mt_rand(1,5555555555555555555).'.'.$fileObject->extension();
+        $fileDirectory  = 'backend/assets/uploaded-files/'.$directory;
+        // $fileObject->move($fileDirectory, $fileName);
 
         $prefix = '';
         $config = [
@@ -125,11 +125,31 @@ function fileUpload ($fileObject, $directory, $nameString = null, $modelFileUrl 
 
         // dd(env('OBS_BUCKET'));
 
-        $result = $client->putObject([
-            'Bucket' => 'biddabari-bucket',
-            'Key' => $fileDirectory.$fileName,
-            'SourceFile' => $fileDirectory.$fileName,
-            ]);
+        // dd($nameString);
+
+        // if ($nameString == 'question') {
+        //     # code...
+        //     $result = $client->putObject([
+        //         'Bucket' => 'biddabari-bucket',
+        //         'Key' => $fileDirectory.'/'.$fileName,
+        //         'SourceFile' => $fileObject,
+        //         ]);
+        // }elseif($nameString == 'section-content'){
+            # code...
+            $result = $client->putObject([
+                'Bucket' => 'biddabari-bucket',
+                'Key' => $fileDirectory.'/'.$fileName,
+                'SourceFile' => $fileObject,
+                ]);
+        // }else {
+        //     # code...
+        //     $result = $client->putObject([
+        //         'Bucket' => 'biddabari-bucket',
+        //         'Key' => $fileDirectory.$fileName,
+        //         'SourceFile' => $fileDirectory.$fileName,
+        //         ]);
+        // }
+
 
             if (file_exists($fileDirectory.$fileName))
             {
@@ -137,8 +157,14 @@ function fileUpload ($fileObject, $directory, $nameString = null, $modelFileUrl 
             }
 
 
-
-        return $fileDirectory.$fileName;
+            // if ($nameString == 'question') {
+            //     return $fileDirectory.'/'.$fileName;
+            // }elseif ($nameString == 'section-content') {
+                return $fileDirectory.'/'.$fileName;
+            // }else {
+            //     # code...
+            //     return $fileDirectory.$fileName;
+            // }
     } else {
         if (isset($modelFileUrl))
         {
