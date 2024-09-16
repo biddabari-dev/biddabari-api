@@ -118,7 +118,10 @@ class BasicViewController extends Controller
             $datum->image = asset($datum->image);
             $datum->body    = strip_tags($datum->body);
         }
-        return response()->json(['notices' => $data]);
+        return response()->json([
+            'notices' => $data,
+            'poppup'  => PopupNotification::where('status', 1)->first(),
+        ]);
     }
 
     public function appHomeSliderCourses ()
@@ -129,8 +132,7 @@ class BasicViewController extends Controller
             $datum->image = asset($datum->image);
             if ($datum->content_type == 'course')
             {
-                // dd($datum);
-                $datum->parent_model_id = explode('/', explode('course-details/', $datum->link)[1] ?? null)[0];
+                $datum->parent_model_id = explode('/', explode('course-details/', $datum->link)[1])[0];
             } elseif ($datum->content_type == 'book')
             {
                 $datum->parent_model_id = explode('/', explode('product-details/', $datum->link)[1])[0];
