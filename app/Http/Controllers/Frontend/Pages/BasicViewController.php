@@ -118,7 +118,10 @@ class BasicViewController extends Controller
             $datum->image = asset($datum->image);
             $datum->body    = strip_tags($datum->body);
         }
-        return response()->json(['notices' => $data]);
+        return response()->json([
+            'notices' => $data,
+            'poppup'  => PopupNotification::where('status', 1)->first(),
+        ]);
     }
 
     public function appHomeSliderCourses ()
