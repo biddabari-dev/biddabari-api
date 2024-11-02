@@ -57,43 +57,70 @@ class FrontendViewController extends Controller
     }
 
 
-    public function productDetails($id, $slug = null)
-    {
-        // dd($id);
-        $this->product = Product::where('slug',$id)->select('id', 'product_author_id', 'title', 'image', 'featured_pdf', 'pdf', 'slug', 'description','price','discount_amount','discount_start_date','discount_end_date','about','specification','other_details' , 'stock_amount', 'is_featured', 'status')->first();
-        if (!empty($this->product->discount_start_date) && !empty($this->product->discount_end_date))
-        {
-            if (Carbon::now()->between(dateTimeFormatYmdHi($this->product->discount_start_date), dateTimeFormatYmdHi($this->product->discount_end_date)))
-            {
+    public function productDetails($id, $slug = null){
+
+        $this->product = Product::when(is_numeric($id), function ($query) use ($id) {
+            return $query->where('id', $id);
+        })
+            ->when(!is_numeric($id), function ($query) use ($id) {
+                return $query->where('slug', $id);
+            })
+            ->select('id', 'product_author_id', 'title', 'image', 'featured_pdf', 'pdf', 'slug', 'description',
+                'price', 'discount_amount', 'discount_start_date', 'discount_end_date', 'about', 'specification',
+                'other_details', 'stock_amount', 'is_featured', 'status')
+            ->first();
+
+        if (empty($this->product)) {
+            if (str()->contains(url()->current(), '/api/')) {
+                return response()->json(['error' => 'Product not found'], 404);
+            } else {
+                abort(404, 'Product not found');
+            }
+        }
+
+        if (!empty($this->product->discount_start_date) && !empty($this->product->discount_end_date)) {
+            if (Carbon::now()->between(dateTimeFormatYmdHi($this->product->discount_start_date), dateTimeFormatYmdHi($this->product->discount_end_date))) {
                 $this->product->has_discount_validity = 'true';
             } else {
                 $this->product->has_discount_validity = 'false';
             }
         } else {
-
             $this->product->has_discount_validity = 'false';
         }
-        $this->product->order_status = ViewHelper::checkIfProductIsPurchased($this->product);
-        if (isset($this->product))
-        {
-            $this->comments = ContactMessage::where(['status' => 1, 'type' => 'product', 'parent_model_id' => $this->product->id, 'is_seen' => 1])->get();
-        }
 
-        $latestProducts = Product::where(['status' => 1])->select('id', 'title', 'image', 'status', 'slug', 'price')->latest()->take(4)->get();
-        if (str()->contains(url()->current(), '/api/'))
-        {
+        $this->product->order_status = ViewHelper::checkIfProductIsPurchased($this->product);
+
+        $this->comments = ContactMessage::where([
+            'status' => 1,
+            'type' => 'product',
+            'parent_model_id' => $this->product->id,
+            'is_seen' => 1
+        ])->get();
+
+        $latestProducts = Product::where(['status' => 1])
+            ->select('id', 'title', 'image', 'status', 'slug', 'price')
+            ->latest()
+            ->take(4)
+            ->get();
+
+        if (str()->contains(url()->current(), '/api/')) {
             $this->product->image = asset($this->product->image);
-            foreach ($latestProducts as $latestProduct)
-            {
+            foreach ($latestProducts as $latestProduct) {
                 $latestProduct->image = asset($latestProduct->image);
             }
         }
+
         $this->data = [
-            'product'   => $this->product,
-            'comments'  => $this->comments,
+            'product' => $this->product,
+            'comments' => $this->comments,
             'latestProducts' => $latestProducts
         ];
-        return ViewHelper::checkViewForApi($this->data, 'frontend.product.product-details');
+
+        if (str()->contains(url()->current(), '/api/')) {
+            return response()->json($this->data);
+        } else {
+            return ViewHelper::checkViewForApi($this->data, 'frontend.product.product-details');
+        }
     }
 
     public function allTeachers ()
@@ -110,7 +137,7 @@ class FrontendViewController extends Controller
 
     public function findTeacher ($id)
     {
-        
+
         if (str()->contains(url()->current(), '/api/'))
         {
             $teacher = Teacher::whereStatus(1)->where('id',$id)->first();
