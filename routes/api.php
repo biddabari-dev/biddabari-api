@@ -78,7 +78,8 @@ Route::prefix('v1')->name('api.')->group(function (){
     Route::get('/all-teachers', [FrontendViewController::class, 'allTeachers']);
     Route::get('/teacher/{id}', [FrontendViewController::class, 'findTeacher']);
 
-    Route::get('/free-courses', [BasicViewController::class, 'freeCourses']);
+    Route::get('/free-service', [BasicViewController::class, 'freeService']);
+    Route::get('/free-service/{slug}', [BasicViewController::class, 'freeServiceContent']);
     Route::get('/all-job-circulars', [FrontendViewController::class, 'allJobCirculars']);
     Route::get('/job-circular-details/{id}/{slug?}', [FrontendViewController::class, 'jobCircularDetail']);
     Route::get('/view-profile', [StudentController::class, 'viewProfile']);

@@ -15,6 +15,7 @@ use App\Models\Backend\BatchExamManagement\BatchExamSubscription;
 use App\Models\Backend\BlogManagement\Blog;
 use App\Models\Backend\BlogManagement\BlogCategory;
 use App\Models\Backend\CircularManagement\Circular;
+use App\Models\Backend\Course\CategoryWIseAssignVideo;
 use App\Models\Backend\Course\Course;
 use App\Models\Backend\Course\CourseCategory;
 use App\Models\Backend\Course\CourseCoupon;
@@ -38,6 +39,7 @@ class BasicViewController extends Controller
     protected $comments = [], $galleries = [], $galleryImage, $batchExams = [];
     public function home ()
     {
+
         // $this->batchExams  = BatchExam::where(['status' => 1, 'is_master_exam' => 0, 'is_paid' => 1])->select('id', 'title', 'banner', 'slug')->take(6)->get();
         $this->courseCategories = CourseCategory::whereStatus(1)->where('parent_id', 0)->orderBy('order', 'ASC')->select('id', 'name', 'image', 'slug', 'icon', 'order', 'status')->take(8)->get();
         $this->courses = Course::whereStatus(1)->where(['is_featured' => 1])->latest()->select('id', 'title', 'sub_title', 'price', 'banner', 'total_video', 'total_audio', 'total_pdf', 'total_exam', 'total_note', 'total_zip', 'total_live', 'total_link','total_file','total_written_exam', 'slug', 'discount_type', 'discount_amount', 'starting_date_time','admission_last_date','alt_text','banner_title')->take(9)->get();
@@ -464,12 +466,35 @@ class BasicViewController extends Controller
 
     public function searchContentHome(Request $request)
     {
+
         $this->courses  = Course::where("title", "LIKE", "%".$request->search_content."%")->whereStatus(1)->select('id', 'title', 'sub_title', 'price', 'banner', 'total_video', 'total_audio', 'total_pdf', 'total_exam', 'total_note', 'total_zip', 'total_live', 'total_link','total_file','total_written_exam', 'slug', 'discount_type', 'discount_amount', 'starting_date_time','alt_text','banner_title')->get();
-        $this->exams = $this->batchExams  = BatchExam::where("title", "LIKE", "%".$request->search_content."%")->where(['status' => 1, 'is_master_exam' => 0])->select('id', 'title', 'banner', 'slug')->get();;
-        $this->data = [
+        $this->exams = $this->batchExams  = BatchExam::where("title", "LIKE", "%".$request->search_content."%")->where(['status' => 1, 'is_master_exam' => 0])->select('id', 'title', 'banner', 'slug')->get();
+        $this->products = Product::where("title", "LIKE", "%".$request->search_content."%")->whereStatus(1)->select('id','product_author_id', 'stock_amount','title','image','price', 'discount_amount', 'discount_start_date', 'discount_end_date', 'slug')->get();
+        return response()->json([
             'courses'       => $this->courses,
-            'batchExams'    => $this->exams
-        ];
-        return view('frontend.basic-pages.search', $this->data);
+            'batchExams'    => $this->exams,
+            'products'    => $this->products,
+        ], 200);
+
+    }
+
+    public function freeService(){
+        $this->courseCategories = CourseCategory::where('parent_id', 0)->where('name', '!=', 'Free Course')->select('id', 'name', 'slug','second_image')->get();
+        return response()->json([
+            'courseCategories'     => $this->courseCategories,
+        ], 200);
+    }
+
+    public function freeServiceContent($slug){
+
+        $category = CourseCategory::where('slug',$slug)->first();
+        $free_class_videos = CategoryWIseAssignVideo::with('categoryVideo:id,title,video_link')->where('category_id', $category->id)->where('type','video')->get();
+        $free_exams = CategoryWIseAssignVideo::with('categoryExam')->where('category_id', $category->id)->where('type','exam')->get();
+
+        return response()->json([
+            'free_class_videos' => $free_class_videos,
+            'free_exams'        => $free_exams,
+        ], 200);
+        
     }
 }
