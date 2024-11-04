@@ -61,7 +61,8 @@ Route::prefix('v1')->name('api.')->group(function (){
     Route::post('send-otp', [CustomAuthController::class, 'sendOtp']);
     Route::post('verify-otp', [CustomAuthController::class, 'verifyOtp']);
 //    Route::get('product-details/{slug}', [BasicViewController::class, 'productDetails']);
-    Route::get('free-courses', [BasicViewController::class, 'freeCourses']);
+    Route::get('free-course', [BasicViewController::class, 'freeCourses']);
+    Route::get('/free-course/{slug}', [BasicViewController::class, 'freeCourseVideo'])->name('free.course');
 
     Route::get('/all-exams', [FrontExamController::class, 'showAllExams']);
     Route::get('/category-exams/{xm_cat_id}/{name?}', [FrontExamController::class, 'categoryExams']);
@@ -77,9 +78,12 @@ Route::prefix('v1')->name('api.')->group(function (){
     //
     Route::get('/all-teachers', [FrontendViewController::class, 'allTeachers']);
     Route::get('/teacher/{id}', [FrontendViewController::class, 'findTeacher']);
+<<<<<<< HEAD
 
     Route::get('/free-service', [BasicViewController::class, 'freeService']);
     Route::get('/free-service/{slug}', [BasicViewController::class, 'freeServiceContent']);
+=======
+>>>>>>> c34efdd9e32c4c1f426b30643076bcd9726865ac
     Route::get('/all-job-circulars', [FrontendViewController::class, 'allJobCirculars']);
     Route::get('/job-circular-details/{id}/{slug?}', [FrontendViewController::class, 'jobCircularDetail']);
     Route::get('/view-profile', [StudentController::class, 'viewProfile']);
