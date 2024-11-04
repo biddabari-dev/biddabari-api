@@ -15,6 +15,7 @@ use App\Models\Backend\BatchExamManagement\BatchExamSubscription;
 use App\Models\Backend\BlogManagement\Blog;
 use App\Models\Backend\BlogManagement\BlogCategory;
 use App\Models\Backend\CircularManagement\Circular;
+use App\Models\Backend\Course\CategoryWIseAssignVideo;
 use App\Models\Backend\Course\Course;
 use App\Models\Backend\Course\CourseCategory;
 use App\Models\Backend\Course\CourseCoupon;
@@ -118,7 +119,10 @@ class BasicViewController extends Controller
             $datum->image = asset($datum->image);
             $datum->body    = strip_tags($datum->body);
         }
-        return response()->json(['notices' => $data]);
+        return response()->json([
+            'notices' => $data,
+            'poppup'  => PopupNotification::where('status', 1)->first(),
+        ]);
     }
 
     public function appHomeSliderCourses ()
@@ -141,7 +145,7 @@ class BasicViewController extends Controller
 
     public function appHomePopupNotification()
     {
-        $this->data = PopupNotification::where(['status' => 1])->orderBy('id', 'DESC')->first();
+        $this->data = PopupNotification::where('status', 1)->first();
         return response()->json(['popupNotification' => $this->data]);
     }
 
@@ -348,24 +352,24 @@ class BasicViewController extends Controller
 
     public function freeCourses ()
     {
-        $this->courses = Course::where('is_paid', 0)->whereStatus(1)->latest()->select('id','title','banner','slug','alt_text','banner_title')->get();
-        $this->batchExams = BatchExam::where(['is_paid' => 0, 'status' => 1])->select('id', 'title', 'slug', 'banner')->get();
-        if (str()->contains(url()->current(), '/api/'))
-        {
-            foreach ($this->courses as $course)
-            {
-                $course->banner = asset($course->banner);
-            }
-            foreach ($this->batchExams as $batchExam)
-            {
-                $batchExam->banner = asset($batchExam->banner);
-            }
-        }
+        $this->courseCategories = CourseCategory::where('parent_id', 0)->where('name', '!=', 'Free Course')->select('id', 'name', 'slug','image','second_image')->get();
+
         $this->data = [
-            'courses'   => $this->courses,
-            'batchExams'     => $this->batchExams,
+            'freeCategories'     => $this->courseCategories,
         ];
-        return ViewHelper::checkViewForApi($this->data, 'frontend.free-service.free-service');
+        return ViewHelper::checkViewForApi($this->data);
+    }
+
+    public function freeCourseVideo($slug){
+
+        $category = CourseCategory::where('slug',$slug)->first();
+        $results = CategoryWIseAssignVideo::with('categoryVideo:id,title,video_link')->where('category_id', $category->id)->where('type','video')->get();
+        $exams = CategoryWIseAssignVideo::with('categoryExam')->where('category_id', $category->id)->where('type','exam')->get();
+        $this->data = [
+            'free_class'   => $results,
+            'free_exams'   => $exams
+        ];
+        return ViewHelper::checkViewForApi($this->data);
     }
 
     public function checkCoupon (Request $request)
