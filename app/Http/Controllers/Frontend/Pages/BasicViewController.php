@@ -128,7 +128,7 @@ class BasicViewController extends Controller
 
     public function appHomeSliderCourses ()
     {
-        $data = Advertisement::whereStatus(1)->whereContentType('course')->take(5)->select('id', 'title', 'content_type', 'image', 'link', 'description')->get();
+        return $data = Advertisement::whereStatus(1)->whereContentType('course')->take(5)->select('id', 'title', 'content_type', 'image', 'link', 'description')->get();
         foreach ($data as $datum)
         {
             $datum->image = asset($datum->image);
@@ -495,6 +495,6 @@ class BasicViewController extends Controller
             'free_class_videos' => $free_class_videos,
             'free_exams'        => $free_exams,
         ], 200);
-        
+
     }
 }

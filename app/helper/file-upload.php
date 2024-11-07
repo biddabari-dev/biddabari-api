@@ -218,9 +218,9 @@ function file_exists_obs($url)
 {
     if ($url != null) {
         # code...
-        $exists = Storage::disk('obs')->has($url);
+        //$exists = Storage::disk('obs')->has($url);
 
-        return $exists;
+        return $url;
     }else{
         return false;
     }
