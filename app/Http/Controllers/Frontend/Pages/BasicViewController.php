@@ -126,22 +126,33 @@ class BasicViewController extends Controller
         ]);
     }
 
-    public function appHomeSliderCourses ()
+    public function appHomeSliderCourses()
     {
-        return $data = Advertisement::whereStatus(1)->whereContentType('course')->take(5)->select('id', 'title', 'content_type', 'image', 'link', 'description')->get();
-        foreach ($data as $datum)
-        {
+        $data = Advertisement::whereStatus(1)
+            ->whereContentType('course')
+            ->take(5)
+            ->select('id', 'title', 'content_type', 'image', 'link', 'description')
+            ->get();
+
+        foreach ($data as $datum) {
             $datum->image = asset($datum->image);
-            if ($datum->content_type == 'course')
-            {
-                $datum->parent_model_id = explode('/', explode('course-details/', $datum->link)[1])[0];
-            } elseif ($datum->content_type == 'book')
-            {
-                $datum->parent_model_id = explode('/', explode('product-details/', $datum->link)[1])[0];
+
+            if ($datum->content_type == 'course') {
+                $path = parse_url($datum->link, PHP_URL_PATH);
+                $slug = basename($path);
+                $course = Course::where('slug', $slug)->first();
+                $datum->parent_model_id = $course->id ?? null;
+            } elseif ($datum->content_type == 'book') {
+                $path = parse_url($datum->link, PHP_URL_PATH);
+                $slug = basename($path);
+                $book = Product::where('slug', $slug)->first();
+                $datum->parent_model_id = $book->id ?? null;
             }
         }
+
         return response()->json(['sliderCourses' => $data]);
     }
+
 
     public function appHomePopupNotification()
     {
