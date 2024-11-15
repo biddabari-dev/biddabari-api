@@ -31,6 +31,7 @@ use App\Models\Frontend\AdditionalFeature\ContactMessage;
 use App\Models\Frontend\CourseOrder\CourseOrder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class BasicViewController extends Controller
 {
@@ -160,36 +161,25 @@ class BasicViewController extends Controller
         return response()->json(['popupNotification' => $this->data]);
     }
 
-    public function allCourses ()
+    public function allCourses (Request $request)
     {
-        $this->courseCategories = CourseCategory::whereStatus(1)->where('parent_id', 0)->select('id', 'name', 'slug')->with(['courses' => function($course){
-            $course->whereStatus(1)->where('is_paid', 1)->latest()->select('id','title','price','banner','total_pdf','total_exam','total_live','discount_amount','discount_type', 'admission_last_date', 'slug','alt_text','banner_title')->get();
-        },
-            'courseCategories' => function($courseCategories) {
-                $courseCategories->select('id', 'parent_id', 'name', 'image', 'slug')->orderBy('order', 'ASC')->whereStatus(1)->get();
-            }])->get();
-        $tempCourses = [];
-        foreach ($this->courseCategories as $courseCategory)
-        {
-            foreach ($courseCategory->courses as $course)
-            {
-                if (strtotime(strtotime($course->admission_last_date)) > strtotime(currentDateTimeYmdHi()))
-                {
-                    $course->order_status = ViewHelper::checkIfCourseIsEnrolled($course);
-                    array_push($tempCourses, $course);
-                } else {
-                    $course->order_status = 'false';
-                }
-            }
-        }
-        $this->courses  = collect($tempCourses)->unique('id');
-//        foreach ($this->courses as $course)
-//        {
-//            $course->order_status = ViewHelper::checkIfCourseIsEnrolled($course);
-//        }
-        // dd($this->courses);
-        $this->data = ['courseCategories' => $this->courseCategories, 'allCourses' => $this->courses];
-        return ViewHelper::checkViewForApi($this->data, 'frontend.courses.courses');
+       // Fetch the required course categories and their first course
+        $this->courseCategories  = CourseCategory::whereStatus(1)->where('parent_id', 0)->orderBy('order', 'ASC')->select('id', 'name', 'image', 'slug', 'icon', 'order', 'status')->take(8)->get();
+
+        // Fetch the featured courses directly without looping, using only necessary fields
+        $courses = Course::where('status', 1)
+            ->where('is_featured', 1)
+            ->select('id', 'title', 'sub_title', 'price', 'banner', 'total_video', 'total_audio', 'total_pdf', 'total_exam', 'total_note', 'total_zip', 'total_live', 'total_link', 'total_file', 'total_written_exam', 'slug', 'discount_type', 'discount_amount', 'starting_date_time', 'admission_last_date', 'alt_text', 'banner_title', 'discount_start_date', 'discount_end_date')
+            ->orderBy('id','DESC')
+            ->paginate(12);
+
+        $this->homeSliderCourses = Advertisement::whereStatus(1)->whereContentType('course')->select('id', 'title', 'content_type', 'description','link','image')->take(6)->get();
+
+        return response()->json([
+            'courseCategories' => $this->courseCategories,
+            'courses' => $courses,
+            'course_sliders' => $this->homeSliderCourses,
+        ],200);
     }
 
     public function categoryCourses ($slug)
@@ -208,42 +198,72 @@ class BasicViewController extends Controller
         return ViewHelper::checkViewForApi($this->data, 'frontend.courses.course-category', 'Category Not Found');
     }
 
-    public function courseDetails ($slug)
+
+    public function courseDetails($id)
     {
-        $course = Course::where('slug', $slug)->first();
-        if (!empty($course))
-        {
-            $courseEnrollStatus = ViewHelper::checkIfCourseIsEnrolled($course);
+        $course = Course::where('id', $id)->select('id', 'slug')->first();
+        if (!$course) {
+            return response()->json([
+                'status'   => false,
+                'message'   => "Data not found!",
+            ], 404);
         }
-        if ($courseEnrollStatus == 'true')
-        {
+
+        $courseEnrollStatus = ViewHelper::checkIfCourseIsEnrolled($course);
+
+        if ($courseEnrollStatus === 'true') {
             return redirect()->route('front.student.course-contents', ['course_id' => $course->id, 'slug' => $course->slug]);
-        } else {
-            $this->course = Course::where('slug', $slug)->with([
-                'teachers'   => function($teachers) {
-                    $teachers->select('id', 'user_id', 'subject', 'first_name', 'last_name', 'description', 'image')->with(['user' => function($user){
-//                    $user->select('id', 'name', 'email')->first();
-                    }])->get();
-                },
-                // 'courseSections' => function($courseSections) {
-                //     $courseSections->whereStatus(1)->with('courseSectionContents')->get()->except(['created_at', 'updated_at']);
-                // },
-                'courseRoutines'    => function($courseRoutines) {
+        }
+        $this->course = Course::where('id', $id)
+            ->with([
+                'teachers:id,user_id,subject,first_name,last_name,description,image,teacher_intro_video,github',
+                'courseRoutines' => function ($courseRoutines) {
                     $courseRoutines->whereStatus(1)->get();
                 }
             ])->first();
-            if (isset($this->course))
-            {
-                $this->comments = ContactMessage::where(['status' => 1, 'type' => 'course', 'parent_model_id' => $this->course->id, 'is_seen' => 1])->get();
-            }
-            $this->data = [
-                'course' => $this->course,
-                'courseEnrollStatus' => $courseEnrollStatus,
-                'comments'  => $this->comments
-            ];
-            return ViewHelper::checkViewForApi($this->data, 'frontend.courses.details', 'Course Not Found');
+
+        if ($this->course) {
+            $this->comments = ContactMessage::where(['status' => 1, 'type' => 'course', 'parent_model_id' => $this->course->id, 'is_seen' => 1])->get();
         }
-        return 'something went wrong';
+
+        if (!empty($this->course->discount_start_date) && !empty($this->course->discount_end_date))
+        {
+            if (Carbon::now()->between(dateTimeFormatYmdHi($this->course->discount_start_date), dateTimeFormatYmdHi($this->course->discount_end_date)))
+            {
+                $this->course->has_discount_validity = 'true';
+            } else {
+                $this->course->has_discount_validity = 'false';
+            }
+        } else {
+
+            $this->course->has_discount_validity = 'false';
+        }
+        $totalStudentEnrollments = DB::table('batch_exam_student')->where('batch_exam_id', $course->id)->count('student_id');
+
+        $courseSec = Course::whereId($course->id)
+            ->select('id', 'title', 'slug', 'status')
+            ->with(['courseSections' => function($courseSections){
+               $courseSections->whereStatus(1)
+                   ->where('available_at', '<=', currentDateTimeYmdHi())
+                   ->orderBy('order', 'ASC')
+                   ->select('id', 'course_id', 'title', 'available_at', 'is_paid')
+                   ->with(['courseSectionContents' => function($courseSectionContents){
+                      $courseSectionContents->where('available_at_timestamp', '<=', strtotime(currentDateTimeYmdHi()))
+                          ->where('content_type', 'video')
+                          ->whereStatus(1)
+                          ->orderBy('order', 'ASC')
+                          ->get();
+            }]);
+        }])->first();
+
+        return response()->json([
+            'course' => $this->course,
+            'courseEnrollStatus' => $courseEnrollStatus,
+            'reviews' => $this->comments,
+            'courseSec' => $courseSec,
+            'totalStudentEnrollments' => $totalStudentEnrollments
+        ],200);
+
     }
 
     public function checkout (Request $request, $type = 'course',  $slug = null)
@@ -369,6 +389,13 @@ class BasicViewController extends Controller
             'freeCategories'     => $this->courseCategories,
         ];
         return ViewHelper::checkViewForApi($this->data);
+    }
+
+    public function popularCourse(){
+        $this->courses = Course::whereStatus(1)->where(['is_popular' => 1])->latest()->select('id', 'title', 'sub_title', 'price', 'banner', 'total_video', 'total_audio', 'total_pdf', 'total_exam', 'total_note', 'total_zip', 'total_live', 'total_link','total_file','total_written_exam', 'slug', 'discount_type', 'discount_amount', 'starting_date_time','admission_last_date','alt_text','banner_title')->take(12)->get();
+        return response()->json([
+            'popular_courses' => $this->courses,
+        ],200);
     }
 
     public function freeCourseVideo($slug){

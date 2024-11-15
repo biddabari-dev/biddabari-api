@@ -48,6 +48,7 @@ Route::prefix('v1')->name('api.')->group(function (){
 
     Route::get('web-home', [BasicViewController::class, 'home'])->name('web-home');
     Route::get('all-courses', [BasicViewController::class, 'allCourses'])->name('all-courses');
+    Route::get('popular-courses', [BasicViewController::class, 'popularCourse'])->name('popular-courses');
     Route::get('course-details/{id}/{slug?}', [BasicViewController::class, 'courseDetails'])->name('course-details');
     Route::get('checkout/{slug}', [BasicViewController::class, 'checkout'])->name('checkout');
     Route::get('category-courses/{id}/{slug?}', [BasicViewController::class, 'categoryCourses'])->name('category-courses');
@@ -72,7 +73,7 @@ Route::prefix('v1')->name('api.')->group(function (){
     Route::get('/remove-from-cart/{id}', [FrontendViewController::class, 'removeFromCart']);
     Route::get('/view-cart', [FrontendViewController::class, 'viewCart']);
     Route::get('/all-products', [FrontendViewController::class, 'allProducts']);
-    Route::get('/product-details/{id}/{slug?}', [FrontendViewController::class, 'productDetails']);
+    Route::get('/product-details/{id}', [FrontendViewController::class, 'productDetails']);
     Route::post('/place-product-order', [FrontendViewController::class, 'placeProductOrder']);
 
     //

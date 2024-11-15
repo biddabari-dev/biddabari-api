@@ -57,29 +57,19 @@ class FrontendViewController extends Controller
     }
 
 
-    public function productDetails($id, $slug = null){
-
-        $this->product = Product::when(is_numeric($id), function ($query) use ($id) {
-            return $query->where('id', $id);
-        })
-            ->when(!is_numeric($id), function ($query) use ($id) {
-                return $query->where('slug', $id);
-            })
-            ->select('id', 'product_author_id', 'title', 'image', 'featured_pdf', 'pdf', 'slug', 'description',
-                'price', 'discount_amount', 'discount_start_date', 'discount_end_date', 'about', 'specification',
-                'other_details', 'stock_amount', 'is_featured', 'status')
-            ->first();
-
-        if (empty($this->product)) {
-            if (str()->contains(url()->current(), '/api/')) {
-                return response()->json(['error' => 'Product not found'], 404);
-            } else {
-                abort(404, 'Product not found');
-            }
+    public function productDetails($id)
+    {
+        $this->product = Product::with('productAuthor')->where('id',$id)->select('id', 'product_author_id', 'title', 'image', 'featured_pdf', 'pdf', 'slug', 'description','price','discount_amount','discount_start_date','discount_end_date','about','specification','other_details' , 'stock_amount', 'is_featured', 'status')->first();
+        if(!$this->product){
+            return response()->json([
+                'status'   => false,
+                'message'   => "Data not found!",
+            ], 404);
         }
-
-        if (!empty($this->product->discount_start_date) && !empty($this->product->discount_end_date)) {
-            if (Carbon::now()->between(dateTimeFormatYmdHi($this->product->discount_start_date), dateTimeFormatYmdHi($this->product->discount_end_date))) {
+        if (!empty($this->product->discount_start_date) && !empty($this->product->discount_end_date))
+        {
+            if (Carbon::now()->between(dateTimeFormatYmdHi($this->product->discount_start_date), dateTimeFormatYmdHi($this->product->discount_end_date)))
+            {
                 $this->product->has_discount_validity = 'true';
             } else {
                 $this->product->has_discount_validity = 'false';
@@ -89,38 +79,19 @@ class FrontendViewController extends Controller
         }
 
         $this->product->order_status = ViewHelper::checkIfProductIsPurchased($this->product);
-
-        $this->comments = ContactMessage::where([
-            'status' => 1,
-            'type' => 'product',
-            'parent_model_id' => $this->product->id,
-            'is_seen' => 1
-        ])->get();
-
-        $latestProducts = Product::where(['status' => 1])
-            ->select('id', 'title', 'image', 'status', 'slug', 'price')
-            ->latest()
-            ->take(4)
-            ->get();
-
-        if (str()->contains(url()->current(), '/api/')) {
-            $this->product->image = asset($this->product->image);
-            foreach ($latestProducts as $latestProduct) {
-                $latestProduct->image = asset($latestProduct->image);
-            }
+        if (isset($this->product))
+        {
+            $this->comments = ContactMessage::where(['status' => 1, 'type' => 'product', 'parent_model_id' => $this->product->id, 'is_seen' => 1])->get();
         }
 
-        $this->data = [
-            'product' => $this->product,
-            'comments' => $this->comments,
-            'latestProducts' => $latestProducts
-        ];
+        $latestProducts = Product::with('productAuthor')->where(['status' => 1])->select('id', 'title', 'image', 'status', 'slug', 'price','product_author_id','discount_amount','discount_type')->latest()->take(4)->get();
 
-        if (str()->contains(url()->current(), '/api/')) {
-            return response()->json($this->data);
-        } else {
-            return ViewHelper::checkViewForApi($this->data, 'frontend.product.product-details');
-        }
+        return response()->json([
+            'product'   => $this->product,
+            'reviews'  => $this->comments,
+            'latestProducts' => $latestProducts,
+        ],200);
+
     }
 
     public function allTeachers ()
@@ -244,7 +215,6 @@ class FrontendViewController extends Controller
 
     public function addToCart (Request $request)
     {
-//        return $request;
         try {
             $this->product = Product::find($request->product_id, ['id','title', 'price', 'image' ]);
             Cart::add([
@@ -258,19 +228,15 @@ class FrontendViewController extends Controller
             ]);
             $data['msg'] = 'Product added in cart';
             $data['status'] = 'success';
-//            $data['cart_count'] = Cart::where('user_id',auth()->id())->count();
-//            return $data;
             return ViewHelper::returnSuccessMessage('Product added to cart successfully.');
-//            return back()->with('success', 'Product added to cart successfully.');
+
         } catch (\Exception $exception)
         {
-//            return back()->with('error',$exception->getMessage());
             return response()->json($exception->getMessage());
         }
     }
     public function addToCarthome (Request $request)
     {
-//        return $request;
         try {
             $this->product = Product::find($request->product_id, ['id','title', 'price', 'image' ]);
             Cart::add([
@@ -348,7 +314,7 @@ class FrontendViewController extends Controller
         $this->data = [
             'blog'    => $this->blog,
             'recentBlogs'   => Blog::whereStatus(1)->latest()->select('id', 'title', 'image', 'slug', 'created_at')->take(6)->get(),
-            'comments'      => $this->comments
+            'reviews'      => $this->comments
         ];
         return ViewHelper::checkViewForApi($this->data, 'frontend.blogs.blog-details');
     }
