@@ -67,7 +67,7 @@
 {{--                                                <a href="{{ route('front.course-details', ['slug' => $course->slug]) }}" target="_blank">--}}
                                                 <a href="{{ route('course-sections.index', ['course_id' => $course->id]) }}" >
                                                     <div class="text-center">
-                                                        <img src="{{ asset(file_exists_obs($course->banner) ? $course->banner : 'frontend/logo/biddabari-card-logo.jpg') }}" alt="" style="height: 100px;" />
+                                                        <img src="{{ asset(file_exists_s3($course->banner) ? $course->banner : 'frontend/logo/biddabari-card-logo.jpg') }}" alt="" style="height: 100px;" />
                                                     </div>
                                                     {{--                                            <br>--}}
                                                     <div class="text-center mt-2">{{ $course->title }}</div>

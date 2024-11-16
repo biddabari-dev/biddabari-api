@@ -55,7 +55,7 @@
                     <div class="col-lg-3 col-md-6">
                         <div class="instructors-card ab-shadow">
                             <a href="javascript:void(0)">
-                                <img src="{{ asset(file_exists_obs($ourTeam->image) ? $ourTeam->image : 'https://png.pngtree.com/png-vector/20190710/ourmid/pngtree-user-vector-avatar-png-image_1541962.jpg' ) }}" alt="Team Images" style="height:300px">
+                                <img src="{{ asset(file_exists_s3($ourTeam->image) ? $ourTeam->image : 'https://png.pngtree.com/png-vector/20190710/ourmid/pngtree-user-vector-avatar-png-image_1541962.jpg' ) }}" alt="Team Images" style="height:300px">
                             </a>
                             <div class="content py-1">
                                 <h3><a href="javascript:void(0)">{{ $ourTeam->name ?? 'Name' }}</a></h3>
