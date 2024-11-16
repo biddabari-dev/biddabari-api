@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Frontend\FrontExam;
 use App\helper\ViewHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Frontend\Checkout\CheckoutController;
+use App\Models\Backend\AdditionalFeatureManagement\Advertisement;
 use App\Models\Backend\AdditionalFeatureManagement\Affiliation\AffiliationHistory;
 use App\Models\Backend\AdditionalFeatureManagement\Affiliation\AffiliationRegistration;
 use App\Models\Backend\BatchExamManagement\BatchExam;
@@ -728,47 +729,28 @@ class FrontExamController extends Controller
         return ViewHelper::checkViewForApi($this->data, 'frontend.exams.batch-exam.result');
     }
 
+
     public function showAllExams ()
     {
-        $masterExam = BatchExam::whereIsMasterExam(1)->with('batchExamSubscriptions')->first();
-        if (isset($masterExam))
-        {
-            $masterExam->purchase_status = ViewHelper::checkUserBatchExamIsEnrollment(ViewHelper::loggedUser(), $masterExam);
-        }
+        // $masterExam = BatchExam::whereIsMasterExam(1)->with('batchExamSubscriptions')->first();
+        // if (isset($masterExam))
+        // {
+        //     $masterExam->purchase_status = ViewHelper::checkUserBatchExamIsEnrollment(ViewHelper::loggedUser(), $masterExam);
+        // }
 
-        $this->examCategories = BatchExamCategory::where(['status' => 1])->whereHas('batchExams')->with(['batchExams' => function($batchExams) {
-            $batchExams->where(['status' => 1, 'is_master_exam' => 0, 'is_paid' => 1])->select('id', 'title', 'banner', 'slug')->get();
-        }])->get();
-        $tempCourses = [];
-        foreach ($this->examCategories as $examCategory)
-        {
-            foreach ($examCategory->batchExams as $batchExam)
-            {
-                if (isset($batchExam))
-                {
-                    $batchExam->purchase_status  = ViewHelper::checkUserBatchExamIsEnrollment(ViewHelper::loggedUser(), $batchExam);
-                    array_push($tempCourses, $batchExam);
-                }
-            }
-        }
+        $this->examCategories = BatchExamCategory::where(['status' => 1, 'parent_id' => 0])->get();
 
-//        $allBatchExams = BatchExam::where(['status' => 1, 'is_master_exam' => 0, 'is_paid' => 1])->select('id', 'title', 'banner', 'slug')->get();
-//        foreach ($allBatchExams as $singleBatchExam)
-//        {
-//            if (isset($singleBatchExam))
-//            {
-//                $singleBatchExam->purchase_status  = ViewHelper::checkUserBatchExamIsEnrollment(ViewHelper::loggedUser(), $singleBatchExam);
-//            }
-//        }
-        $allBatchExams = collect($tempCourses)->unique('id');
+        // $allBatchExams = BatchExam::where(['status' => 1, 'is_master_exam' => 0, 'is_paid' => 1])->get();
+        $allBatchExams = BatchExam::where(['status' => 1, 'is_master_exam' => 0, 'is_paid' => 1])->select('id', 'title', 'banner', 'slug','price','discount_type','discount_amount','admission_last_date')->get();
 
-        $this->data = [
-//            'exams'     => $this->exams,
+        $exam_sliders = Advertisement::whereStatus(1)->whereContentType('exam')->select('id', 'title', 'content_type', 'description','link','image')->take(6)->get();
+        return response()->json([
             'examCategories'     => $this->examCategories,
-            'masterExam'    => $masterExam,
-            'allExams'      => $allBatchExams
-        ];
-        return ViewHelper::checkViewForApi($this->data, 'frontend.exams.xm.all-exams');
+            // 'masterExam'    => $masterExam,
+            'allExams'      => $allBatchExams,
+            'exam_sliders'      => $exam_sliders,
+        ],200);
+
     }
 
     public function categoryExams ($id, $name = null)
