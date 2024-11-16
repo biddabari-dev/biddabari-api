@@ -175,7 +175,7 @@ function userCertificateUpload ($fileObject, $directory, $nameString = null)
     }
 }
 
-function fileUpload ($fileObject, $directory, $nameString = null, $modelFileUrl = null)
+/*function fileUpload ($fileObject, $directory, $nameString = null, $modelFileUrl = null)
 {
     // dd($nameString);
     if ($fileObject)
@@ -260,7 +260,75 @@ function fileUpload ($fileObject, $directory, $nameString = null, $modelFileUrl 
             return null;
         }
     }
+}*/
+
+
+// This Function use for AWS fileUpload
+function fileUpload($fileObject, $directory, $nameString = null, $modelFileUrl = null)
+{
+    if ($fileObject) {
+        // Delete old file if the model file URL exists
+        /*if ($modelFileUrl && Storage::disk('s3')->exists($modelFileUrl)) {
+            Storage::disk('s3')->delete($modelFileUrl);
+        }*/
+
+        /* if ($modelFileUrl) {
+             $filePath = parse_url($modelFileUrl, PHP_URL_PATH);
+             $filePath = ltrim($filePath, '/');
+
+             if ($filePath && Storage::disk('s3')->exists($filePath)) {
+                 Storage::disk('s3')->delete($filePath);
+             }
+         }*/
+
+        // Generate a unique file name if nameString is not provided
+        $folderPath = 'backend/assets/uploaded-files/' . rtrim($directory, '/');
+        $nameString = $nameString ?? pathinfo($fileObject->getClientOriginalName(), PATHINFO_FILENAME);
+        $nameString = str_replace(' ', '-', $nameString);
+        $fileName = $nameString . '-' . time() . '-' . rand(10, 1000000000000000) . '.' . $fileObject->getClientOriginalExtension();
+        $s3FilePath = $folderPath . '/' . $fileName;
+
+        // Generate a unique file name if nameString is not provided
+        /* $fileName = ($nameString ? $nameString : mt_rand(1, 5555555555555555555)) . '.' . $fileObject->extension();
+         $fileDirectory = 'backend/assets/uploaded-files/' . rtrim($directory, '/') . '/';*/
+
+        // Configure AWS S3 client
+        $s3Client = new S3Client([
+            'version' => 'latest',
+            'region' => env('AWS_DEFAULT_REGION'),
+            'credentials' => [
+                'key' => env('AWS_ACCESS_KEY_ID'),
+                'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            ],
+        ]);
+
+        /*// Upload file to S3
+        $result = $s3Client->putObject([
+            'Bucket' => env('AWS_BUCKET'),
+            'Key' => $s3FilePath,
+            'SourceFile' => $fileObject->getRealPath(),
+        ]);
+
+        return $result['ObjectURL'];*/
+
+        // Upload file to S3
+        $s3Client->putObject([
+            'Bucket' => env('AWS_BUCKET'),
+            'Key' => $s3FilePath,
+            'SourceFile' => $fileObject->getRealPath(),
+        ]);
+
+        // Return the relative path
+        return $s3FilePath;
+
+    } else {
+
+        return $modelFileUrl ?? null;
+
+        //return $modelFileUrl ? parse_url($modelFileUrl, PHP_URL_PATH) : null;
+    }
 }
+
 
 function getFileExtension($file)
 {
