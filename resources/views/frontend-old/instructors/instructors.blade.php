@@ -12,7 +12,7 @@
                     <div class="col-lg-3 col-md-6">
                         <div class="instructors-card ab-shadow">
                             <a href="{{--{{ route('front.instructor-details', ['id' => $teacher->id, 'slug' => str_replace(' ', '-', $teacher->name)]) }}--}}">
-                                <img src="{{ asset(file_exists_obs($teacher->user->user_photo_path) ? $teacher->user->user_photo_path : (file_exists_obs($teacher->image) ? $teacher->image :'https://png.pngtree.com/png-vector/20190710/ourmid/pngtree-user-vector-avatar-png-image_1541962.jpg') ) }}" alt="Team Images">
+                                <img src="{{ asset(file_exists_s3($teacher->user->user_photo_path) ? $teacher->user->user_photo_path : (file_exists_s3($teacher->image) ? $teacher->image :'https://png.pngtree.com/png-vector/20190710/ourmid/pngtree-user-vector-avatar-png-image_1541962.jpg') ) }}" alt="Team Images">
                             </a>
                             <div class="content py-3">
                                 <h3><a href="{{--{{ route('front.instructor-details', ['id' => $teacher->id, 'slug' => str_replace(' ', '-', $teacher->name)]) }}--}}">{{ $teacher->user->name ?? '' }}</a></h3>

@@ -49,7 +49,7 @@
                         <div class="col-lg-4 col-md-6">
                             <div class="courses-item">
                                 <a href="{{ route('front.course-details', [ 'slug' => $course->slug]) }}">
-                                    <img src="{{ asset(file_exists_obs($course->banner) ? $course->banner : 'frontend/logo/biddabari-card-logo.jpg') }}" alt="{{ $course->alt_text }}" title="{{ $course->banner_title }}" class="w-100" style="height: 230px"/>
+                                    <img src="{{ asset(file_exists_s3($course->banner) ? $course->banner : 'frontend/logo/biddabari-card-logo.jpg') }}" alt="{{ $course->alt_text }}" title="{{ $course->banner_title }}" class="w-100" style="height: 230px"/>
                                 </a>
                                 <div class="content">
                                     <h3><a href="{{ route('front.course-details', ['slug' => $course->slug]) }}">{{ $course->title }}</a></h3>
