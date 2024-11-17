@@ -109,12 +109,18 @@ class FrontendViewController extends Controller
     public function findTeacher ($id)
     {
 
-        if (str()->contains(url()->current(), '/api/'))
-        {
-            $teacher = Teacher::whereStatus(1)->where('id',$id)->first();
+        $teacher = Teacher::find($id);
+        if (!$teacher) {
+            return response()->json([
+                'status'   => false,
+                'message'   => "Data not found!",
+            ], 404);
         }
+        $latestCourses = $teacher->courses()->where('status', 1)->latest()->take(3)->get();
+        
         return response()->json([
-            'teacher'  => $teacher,
+            'teacher' => $teacher,
+            'latestCourses' => $latestCourses,
         ],200);
 
     }
