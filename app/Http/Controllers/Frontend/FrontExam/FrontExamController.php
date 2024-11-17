@@ -741,7 +741,16 @@ class FrontExamController extends Controller
         $this->examCategories = BatchExamCategory::where(['status' => 1, 'parent_id' => 0])->get();
 
         // $allBatchExams = BatchExam::where(['status' => 1, 'is_master_exam' => 0, 'is_paid' => 1])->get();
-        $allBatchExams = BatchExam::where(['status' => 1, 'is_master_exam' => 0, 'is_paid' => 1])->select('id', 'title', 'banner', 'slug','price','discount_type','discount_amount','admission_last_date')->get();
+        $allBatchExams = BatchExam::where([
+            'status' => 1,
+            'is_master_exam' => 0,
+            'is_paid' => 1
+        ])->select('id', 'title', 'banner', 'slug', 'price', 'discount_type', 'discount_amount', 'admission_last_date')->get();
+
+        $allBatchExams = $allBatchExams->map(function ($exam) {
+            $exam->price = (float) $exam->price; // Cast price to float
+            return $exam;
+        });
 
         $exam_sliders = Advertisement::whereStatus(1)->whereContentType('exam')->select('id', 'title', 'content_type', 'description','link','image')->take(6)->get();
         return response()->json([
