@@ -105,7 +105,7 @@ class BasicViewController extends Controller
 
     public function appHomeProducts ()
     {
-        $data = Product::whereStatus(1)->latest()->select('id', 'title', 'image', 'price','slug')->get();
+        $data = Product::whereStatus(1)->latest()->select('id', 'title', 'image', 'price', 'stock_amount','slug')->get();
         foreach ($data as $datum)
         {
             $datum->image = asset($datum->image);
