@@ -842,40 +842,96 @@ class FrontExamController extends Controller
         }
     }
 // course exam
+    // public function showCourseExamAnswers($contentId)
+    // {
+    //     $this->sectionContent = CourseSectionContent::whereId($contentId)->select('id', 'course_section_id', 'parent_id', 'content_type', 'title', 'status', 'exam_end_time_timestamp','exam_duration_in_minutes','written_exam_duration_in_minutes')->with(['questionStores' => function($questionStores){
+    //         $questionStores->select('id', 'question_type', 'question', 'question_description', 'question_image', 'question_video_link', 'written_que_ans', 'written_que_ans_description', 'has_all_wrong_ans', 'status', 'mcq_ans_description')->with('questionOptions')->get();
+    //     }])->first();
+
+
+    //     $this->courseExamResults = CourseExamResult::where(['course_section_content_id' => $contentId])->orderBy('result_mark', 'DESC')->orderBy('required_time', 'ASC')->with(['courseSectionContent' => function($courseSectionContent) {
+    //         $courseSectionContent->select('id',  'course_section_id', 'exam_total_questions','exam_per_question_mark', 'written_total_questions')->first();
+    //     },
+    //         'user'])->get();
+
+    //     $myRank = [];
+    //     foreach ($this->courseExamResults as $index => $courseExamResult)
+    //     {
+    //         if ($courseExamResult->user_id == ViewHelper::loggedUser()->id)
+    //         {
+    //             $myRank = $courseExamResult;
+    //             $myRank['position'] = ++$index;
+    //         }
+    //     }
+
+    //     //        student xm perticipant check
+    //     $xmAllResults   = CourseExamResult::where('course_section_content_id', $contentId)->get();
+    //     $userXmPerticipateStatus = false;
+    //     foreach ($xmAllResults as $xmSingleResult)
+    //     {
+    //         if ($xmSingleResult->user_id == ViewHelper::loggedUser()->id )
+    //         {
+    //             $userXmPerticipateStatus    = true;
+    //             break;
+    //         }
+    //     }
+    //     if (strtotime(currentDateTimeYmdHi()) > $this->sectionContent->exam_end_time_timestamp)
+    //     {
+    //         $userXmPerticipateStatus = true;
+    //     }
+    //     if (!$userXmPerticipateStatus)
+    //     {
+    //         return ViewHelper::returEexceptionError('You can\'t view the answers till exam ends.');
+    //     }
+    //     //        student xm perticipant check ends
+
+
+
+    //     if ($this->sectionContent->content_type == 'exam')
+    //     {
+    //         $getProvidedAnswers = CourseExamResult::where(['course_section_content_id' => $contentId, 'user_id' => ViewHelper::loggedUser()->id])->first();
+    //         if (isset($getProvidedAnswers->provided_ans))
+    //         {
+    //             $this->ansLoop($this->sectionContent, (array) json_decode($getProvidedAnswers->provided_ans));
+    //         }
+    //     } elseif ($this->sectionContent->content_type == 'written_exam')
+    //     {
+    //         $writtenXmFile = CourseExamResult::where(['xm_type' => 'written_exam', 'course_section_content_id' => $contentId,'user_id'=>ViewHelper::loggedUser()->id])->select('id', 'course_section_content_id', 'xm_type', 'user_id', 'written_xm_file')->first();
+    //         if (str()->contains(url()->current(), '/api/'))
+    //         {
+    //             $writtenXmFile = $writtenXmFile->written_xm_file;
+    //         }
+    //     }
+
+    //     $this->data = [
+    //         'content'   => $this->sectionContent,
+    //         'writtenFile' => $writtenXmFile ?? null,
+    //         'myPosition'    => $myRank,
+
+    //     ];
+    //     return ViewHelper::checkViewForApi($this->data, 'frontend.exams.course.show-ans');
+    // }
+
     public function showCourseExamAnswers($contentId)
     {
-        $this->sectionContent = CourseSectionContent::whereId($contentId)->select('id', 'course_section_id', 'parent_id', 'content_type', 'title', 'status', 'exam_end_time_timestamp','exam_duration_in_minutes','written_exam_duration_in_minutes')->with(['questionStores' => function($questionStores){
+        $this->sectionContent = CourseSectionContent::whereId($contentId)->select('id', 'course_section_id', 'parent_id', 'content_type', 'title', 'status', 'exam_end_time_timestamp', 'exam_total_questions', 'exam_per_question_mark', 'exam_pass_mark', 'exam_duration_in_minutes', 'exam_negative_mark')->with(['questionStores' => function($questionStores){
             $questionStores->select('id', 'question_type', 'question', 'question_description', 'question_image', 'question_video_link', 'written_que_ans', 'written_que_ans_description', 'has_all_wrong_ans', 'status', 'mcq_ans_description')->with('questionOptions')->get();
         }])->first();
 
-
-        $this->courseExamResults = CourseExamResult::where(['course_section_content_id' => $contentId])->orderBy('result_mark', 'DESC')->orderBy('required_time', 'ASC')->with(['courseSectionContent' => function($courseSectionContent) {
-            $courseSectionContent->select('id',  'course_section_id', 'exam_total_questions','exam_per_question_mark', 'written_total_questions')->first();
-        },
-            'user'])->get();
-
-        $myRank = [];
-        foreach ($this->courseExamResults as $index => $courseExamResult)
-        {
-            if ($courseExamResult->user_id == ViewHelper::loggedUser()->id)
-            {
-                $myRank = $courseExamResult;
-                $myRank['position'] = ++$index;
-            }
-        }
-
-        //        student xm perticipant check
         $xmAllResults   = CourseExamResult::where('course_section_content_id', $contentId)->get();
         $userXmPerticipateStatus = false;
-        foreach ($xmAllResults as $xmSingleResult)
-        {
-            if ($xmSingleResult->user_id == ViewHelper::loggedUser()->id )
+        if($xmAllResults){
+            foreach ($xmAllResults as $xmSingleResult)
             {
-                $userXmPerticipateStatus    = true;
-                break;
+                if ($xmSingleResult->user_id == ViewHelper::loggedUser()->id )
+                {
+                    $userXmPerticipateStatus    = true;
+                    break;
+                }
             }
         }
-        if (strtotime(currentDateTimeYmdHi()) > $this->sectionContent->exam_end_time_timestamp)
+
+        if (strtotime(currentDateTimeYmdHi()) > isset($this->sectionContent->exam_end_time_timestamp))
         {
             $userXmPerticipateStatus = true;
         }
@@ -887,14 +943,14 @@ class FrontExamController extends Controller
 
 
 
-        if ($this->sectionContent->content_type == 'exam')
+        if (isset($this->sectionContent->content_type) == 'exam')
         {
             $getProvidedAnswers = CourseExamResult::where(['course_section_content_id' => $contentId, 'user_id' => ViewHelper::loggedUser()->id])->first();
             if (isset($getProvidedAnswers->provided_ans))
             {
                 $this->ansLoop($this->sectionContent, (array) json_decode($getProvidedAnswers->provided_ans));
             }
-        } elseif ($this->sectionContent->content_type == 'written_exam')
+        } elseif (isset($this->sectionContent->content_type) == 'written_exam')
         {
             $writtenXmFile = CourseExamResult::where(['xm_type' => 'written_exam', 'course_section_content_id' => $contentId,'user_id'=>ViewHelper::loggedUser()->id])->select('id', 'course_section_content_id', 'xm_type', 'user_id', 'written_xm_file')->first();
             if (str()->contains(url()->current(), '/api/'))
@@ -904,10 +960,9 @@ class FrontExamController extends Controller
         }
 
         $this->data = [
-            'content'   => $this->sectionContent,
-            'writtenFile' => $writtenXmFile ?? null,
-            'myPosition'    => $myRank,
-
+            'content'   => $this->sectionContent ?? null,
+            'courseExamResult' => $getProvidedAnswers ?? null,
+            'writtenFile' => $writtenXmFile ?? null
         ];
         return ViewHelper::checkViewForApi($this->data, 'frontend.exams.course.show-ans');
     }

@@ -6,6 +6,7 @@ use App\helper\ViewHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Frontend\Checkout\CheckoutController;
 use App\Http\Requests\Frontend\Order\ProductOrderRequest;
+use App\Models\Backend\AdditionalFeatureManagement\Advertisement;
 use App\Models\Backend\BatchExamManagement\BatchExam;
 use App\Models\Backend\BlogManagement\Blog;
 use App\Models\Backend\BlogManagement\BlogCategory;
@@ -50,8 +51,12 @@ class FrontendViewController extends Controller
 //            $product->featured_image = asset($product->featured_image);
             $product->order_status = ViewHelper::checkIfProductIsPurchased($product);
         }
+
+        $product_sliders = Advertisement::whereStatus(1)->whereContentType('book')->select('id', 'title', 'content_type', 'description','link','image')->take(6)->get();
+
         $this->data = [
-            'products'  => $this->products
+            'products'  => $this->products,
+            'product_sliders'  => $product_sliders,
         ];
         return ViewHelper::checkViewForApi($this->data, 'frontend.product.all-products');
     }
@@ -117,7 +122,7 @@ class FrontendViewController extends Controller
             ], 404);
         }
         $latestCourses = $teacher->courses()->where('status', 1)->latest()->take(3)->get();
-        
+
         return response()->json([
             'teacher' => $teacher,
             'latestCourses' => $latestCourses,
