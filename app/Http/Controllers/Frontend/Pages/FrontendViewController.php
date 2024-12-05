@@ -418,13 +418,31 @@ class FrontendViewController extends Controller
 //        return back()->with('success', 'Comment submitted successfully.');
     }
 
-    public function instructorDetails ($id, $slug = null)
+//    public function instructorDetails ($id, $slug = null)
+//    {
+//        $teacher = Teacher::find($id);
+//        $this->data = [
+//            'teacher'   => $teacher,
+//            'latestCourses' => Course::whereStatus(1)->latest()->take(6)->get(),
+//        ];
+//        return ViewHelper::checkViewForApi($this->data, 'frontend.instructors.instructors-details');
+//    }
+
+
+    public function instructorDetails($id, $slug = null)
     {
         $teacher = Teacher::find($id);
+        if (!$teacher) {
+            return response()->view('errors.404', [], 404);
+        }
+        $latestCourses = $teacher->courses()->where('status', 1)->latest()->take(3)->get();
         $this->data = [
-            'teacher'   => $teacher,
-            'latestCourses' => Course::whereStatus(1)->latest()->take(6)->get(),
+            'teacher' => $teacher,
+            'latestCourses' => $latestCourses,
         ];
+
         return ViewHelper::checkViewForApi($this->data, 'frontend.instructors.instructors-details');
     }
+
+
 }
