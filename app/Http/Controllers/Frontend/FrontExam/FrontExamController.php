@@ -283,21 +283,141 @@ class FrontExamController extends Controller
         return back()->with('error', 'Exam Not Found.');
     }
 
-    public function commonGetCourseExamResul($request, $contentId, $slug = null)
-    {
-
-
-
-//        $existExam = CourseExamResult::where(['user_id' => ViewHelper::loggedUser()->id, 'course_section_content_id' => $contentId])->first();
-//        if (isset($existExam) && !empty($existExam))
+//    public function commonGetCourseExamResul($request, $contentId, $slug = null)
+//    {
+//
+//
+//
+////        $existExam = CourseExamResult::where(['user_id' => ViewHelper::loggedUser()->id, 'course_section_content_id' => $contentId])->first();
+////        if (isset($existExam) && !empty($existExam))
+////        {
+////            if (str()->contains(url()->current(), '/api/'))
+////            {
+////                return response()->json(['error' => 'You already participated in this exam.'], 400);
+////            } else {
+////                return redirect('/student/dashboard')->with('success', 'You already participated in this exam.');
+////            }
+////        }
+//        $this->resultNumber = 0;
+//        $this->totalRightAns = 0;
+//        $this->totalWrongAns = 0;
+//        $this->totalProvidedAns = 0;
+//        $this->exam = CourseSectionContent::whereId($contentId)->first();
+//        if ($this->exam)
 //        {
+//            if ($this->exam->content_type == 'exam')
+//            {
+//                if (!empty($request->question))
+//                {
+//                    $this->questionJson = $request->question;
+//                    foreach ($request->question as $question_id => $answer)
+//                    {
+//                        if (!is_array($answer))
+//                        {
+//                            unset($this->questionJson[$question_id]);
+//                        }
+//                        $this->question = QuestionStore::whereId($question_id)->select('id', 'question_type', 'question_mark', 'negative_mark', 'has_all_wrong_ans', 'status')->first();
+//                        if (is_array($answer))
+//                        {
+//                            ++$this->totalProvidedAns;
+//                            if ($this->question->has_all_wrong_ans == 1)
+//                            {
+////                                    $this->resultNumber -= (int)$this->question->negative_mark;
+//                                $this->resultNumber -= $this->exam->exam_negative_mark;
+//                                ++$this->totalWrongAns;
+//                            } else {
+//                                $this->questionOption = QuestionOption::whereId($answer['answer'])->select('id', 'is_correct')->first();
+//                                if ($this->questionOption->is_correct == 1)
+//                                {
+//                                    $this->resultNumber += (int)$this->exam->exam_per_question_mark;
+//                                    ++$this->totalRightAns;
+//                                } else {
+//                                    $this->resultNumber -= $this->exam->exam_negative_mark;
+//                                    ++$this->totalWrongAns;
+//                                }
+//                            }
+//                        }
+//                    }
+//                }
+//                $this->examResult = [
+//                    'course_section_content_id'       => $contentId,
+//                    'user_id'       => ViewHelper::loggedUser()->id,
+//                    'xm_type'       => $this->exam->content_type,
+////                    'written_xm_file'       => fileUpload($request->file('written_xm_file'), 'xm-files/'.$this->exam->id.'/', 'file-'.ViewHelper::loggedUser()->id.'-'),
+//                    'provided_ans'      => json_encode($this->questionJson),
+//                    'total_right_ans'       => $this->totalRightAns ?? 0,
+//                    'total_wrong_ans'       => $this->totalWrongAns ?? 0,
+//                    'total_provided_ans'    => $this->totalProvidedAns ?? 0,
+////                        'result_mark'       => $this->resultNumber > 0 ? $this->resultNumber : 0,
+//                    'result_mark'       => $this->resultNumber,
+//                    'is_reviewed'       => 0,
+//                    'required_time'       => $request->required_time ?? 0,
+//                    'status'        => $this->exam->content_type == 'exam' ? ($this->resultNumber >= $this->exam->exam_pass_mark ? 'pass' : 'fail') : 'pending',
+//                ];
+//
+//            } elseif ($this->exam->content_type == 'written_exam')
+//            {
+//                $imageUrl = '';
+//                $this->pdfFilePath = '';
+//
+//                if (isset($request->ans_files))
+//                {
+//                    if (!empty($request->file('ans_files')))
+//                    {
+//                        foreach ($request->file('ans_files') as $ans_file)
+//                        {
+//
+//                            $imageUrl = imageUpload($ans_file, 'course-xm-temp-file-upload/', 'tmp', 600, 800);
+//                            array_push($this->fileSessionPaths, $imageUrl);
+////                            $this->filePathString .= $_SERVER['DOCUMENT_ROOT'].'/'.($imageUrl).' ';
+//                            $this->filePathString .= public_path($imageUrl).' ';
+//                        }
+//                        $this->pdfFilePath = 'backend/assets/uploaded-files/course-written-xm-ans-files/'.rand(10000,99999).time().'.pdf';
+//                        if (!File::isDirectory(public_path('backend/assets/uploaded-files/course-written-xm-ans-files')))
+//                        {
+//                            File::makeDirectory(public_path('backend/assets/uploaded-files/course-written-xm-ans-files'), 0777, true, true);
+//                        }
+////                        exec('convert '. $this->filePathString.$_SERVER['DOCUMENT_ROOT'].'/'.$this->pdfFilePath);
+//
+//                         shell_exec('convert '. $this->filePathString.public_path($this->pdfFilePath));
+//                        foreach ($this->fileSessionPaths as $fileSessionPath)
+//                        {
+//                            if (file_exists($fileSessionPath))
+//                            {
+//                                unlink($fileSessionPath);
+//                            }
+//                        }
+//                    }
+//                }
+//                $this->examResult = [
+//                    'course_section_content_id'       => $contentId,
+//                    'user_id'       => ViewHelper::loggedUser()->id,
+//                    'xm_type'       => $this->exam->content_type,
+//                    'written_xm_file'       => $this->pdfFilePath,
+////                    'provided_ans'      => json_encode($this->questionJson),
+////                    'result_mark'       => $this->resultNumber ?? 0,
+//                    'is_reviewed'       => 0,
+//                    'required_time'       => $request->required_time ?? 0,
+//                    'status'        =>  'pending',
+//                ];
+//            }
+//            $courseExamId = CourseExamResult::storeExamResult($this->examResult);
+//
+//            Session::forget(['getXmStartStatus', 'getXmDataToSession']);
+//
 //            if (str()->contains(url()->current(), '/api/'))
 //            {
-//                return response()->json(['error' => 'You already participated in this exam.'], 400);
+//                return response()->json(['status' => 'success', 'message' => 'Exam Data Saved Successfully.', 'exam_id' => $this->exam->id]);
 //            } else {
-//                return redirect('/student/dashboard')->with('success', 'You already participated in this exam.');
+//                return redirect()->route('front.student.show-course-exam-result', ['xm_id' => $contentId, 'xm_result_id' => $courseExamId->id])->with('success', 'You Successfully finished your exam.');
 //            }
+//        } else {
+//            return ViewHelper::returEexceptionError('Exam Not Found.');
 //        }
+//    }
+
+    public function commonGetCourseExamResul(Request $request, $contentId, $slug = null)
+    {
         $this->resultNumber = 0;
         $this->totalRightAns = 0;
         $this->totalWrongAns = 0;
@@ -322,7 +442,6 @@ class FrontExamController extends Controller
                             ++$this->totalProvidedAns;
                             if ($this->question->has_all_wrong_ans == 1)
                             {
-//                                    $this->resultNumber -= (int)$this->question->negative_mark;
                                 $this->resultNumber -= $this->exam->exam_negative_mark;
                                 ++$this->totalWrongAns;
                             } else {
@@ -343,19 +462,17 @@ class FrontExamController extends Controller
                     'course_section_content_id'       => $contentId,
                     'user_id'       => ViewHelper::loggedUser()->id,
                     'xm_type'       => $this->exam->content_type,
-//                    'written_xm_file'       => fileUpload($request->file('written_xm_file'), 'xm-files/'.$this->exam->id.'/', 'file-'.ViewHelper::loggedUser()->id.'-'),
                     'provided_ans'      => json_encode($this->questionJson),
                     'total_right_ans'       => $this->totalRightAns ?? 0,
                     'total_wrong_ans'       => $this->totalWrongAns ?? 0,
                     'total_provided_ans'    => $this->totalProvidedAns ?? 0,
-//                        'result_mark'       => $this->resultNumber > 0 ? $this->resultNumber : 0,
                     'result_mark'       => $this->resultNumber,
                     'is_reviewed'       => 0,
                     'required_time'       => $request->required_time ?? 0,
                     'status'        => $this->exam->content_type == 'exam' ? ($this->resultNumber >= $this->exam->exam_pass_mark ? 'pass' : 'fail') : 'pending',
                 ];
 
-            } elseif ($this->exam->content_type == 'written_exam')
+            }elseif ($this->exam->content_type == 'written_exam')
             {
                 $imageUrl = '';
                 $this->pdfFilePath = '';
@@ -379,7 +496,7 @@ class FrontExamController extends Controller
                         }
 //                        exec('convert '. $this->filePathString.$_SERVER['DOCUMENT_ROOT'].'/'.$this->pdfFilePath);
 
-                         shell_exec('convert '. $this->filePathString.public_path($this->pdfFilePath));
+                        shell_exec('convert '. $this->filePathString.public_path($this->pdfFilePath));
                         foreach ($this->fileSessionPaths as $fileSessionPath)
                         {
                             if (file_exists($fileSessionPath))
@@ -401,6 +518,7 @@ class FrontExamController extends Controller
                     'status'        =>  'pending',
                 ];
             }
+
             $courseExamId = CourseExamResult::storeExamResult($this->examResult);
 
             Session::forget(['getXmStartStatus', 'getXmDataToSession']);
@@ -411,10 +529,12 @@ class FrontExamController extends Controller
             } else {
                 return redirect()->route('front.student.show-course-exam-result', ['xm_id' => $contentId, 'xm_result_id' => $courseExamId->id])->with('success', 'You Successfully finished your exam.');
             }
-        } else {
+        }else{
             return ViewHelper::returEexceptionError('Exam Not Found.');
         }
+
     }
+
     public function getCourseExamResult(Request $request, $contentId, $slug = null)
     {
         try {
@@ -1088,14 +1208,15 @@ class FrontExamController extends Controller
         $this->sectionContent = BatchExamSectionContent::whereId($contentId)->select('id', 'batch_exam_section_id', 'parent_id', 'content_type', 'title', 'status','exam_duration_in_minutes','written_exam_duration_in_minutes')->with(['questionStores' => function($questionStores){
             $questionStores->select('id', 'question_type', 'question', 'question_description', 'question_image', 'question_video_link', 'written_que_ans', 'written_que_ans_description', 'has_all_wrong_ans', 'status', 'mcq_ans_description')->with('questionOptions')->get();
         }])->first();
-        if ($this->sectionContent->content_type == 'exam')
+
+        if (isset($this->sectionContent->content_type) == 'exam')
         {
             $getProvidedAnswers = BatchExamResult::where(['batch_exam_section_content_id' => $contentId, 'user_id' => ViewHelper::loggedUser()->id])->first();
             if (isset($getProvidedAnswers->provided_ans))
             {
                 $this->ansLoop($this->sectionContent, (array) json_decode($getProvidedAnswers->provided_ans));
             }
-        } elseif ($this->sectionContent->content_type == 'written_exam')
+        } elseif (isset($this->sectionContent->content_type) == 'written_exam')
         {
             $writtenXmFile = BatchExamResult::where(['xm_type' => 'written_exam', 'batch_exam_section_content_id' => $contentId,'user_id' => ViewHelper::loggedUser()->id])->select('id', 'batch_exam_section_content_id', 'xm_type', 'user_id', 'written_xm_file')->first();
              if (str()->contains(url()->current(), '/api/'))
@@ -1126,6 +1247,7 @@ class FrontExamController extends Controller
         return ViewHelper::checkViewForApi($this->data, 'frontend.exams.batch-exam.show-ans');
     }
 
+
     public function ansLoop($sectionContent, $providedAnswers)
     {
         // dd($sectionContent->questionStores);
@@ -1152,26 +1274,22 @@ class FrontExamController extends Controller
                 }
             }
         }
-
-        foreach ($sectionContent->questionStoresForClassXm as $questionStore)
-        {
-            foreach ($questionStore->questionOptions as $questionOption)
-            {
-                foreach ($providedAnswers as $questionId => $providedAnswer)
-                {
-                    if($questionStore->id == $questionId){
-                        $questionStore->has_answered=1;
-                    }
-                    if ($questionId == $questionStore->id && $questionOption->is_correct == 1 && $questionOption->id == $providedAnswer->answer)
-                    {
-                        $questionOption->my_ans = 1;
-                        break;
-                    } elseif ($questionId == $questionStore->id && $questionOption->is_correct == 0 && $questionOption->id == $providedAnswer->answer)
-                    {
-                        $questionOption->my_ans = 0;
-                        break;
-                    } else {
-                        $questionOption->my_ans = 2;
+        if($sectionContent->questionStoresForClassXm) {
+            foreach ($sectionContent->questionStoresForClassXm as $questionStore) {
+                foreach ($questionStore->questionOptions as $questionOption) {
+                    foreach ($providedAnswers as $questionId => $providedAnswer) {
+                        if ($questionStore->id == $questionId) {
+                            $questionStore->has_answered = 1;
+                        }
+                        if ($questionId == $questionStore->id && $questionOption->is_correct == 1 && $questionOption->id == $providedAnswer->answer) {
+                            $questionOption->my_ans = 1;
+                            break;
+                        } elseif ($questionId == $questionStore->id && $questionOption->is_correct == 0 && $questionOption->id == $providedAnswer->answer) {
+                            $questionOption->my_ans = 0;
+                            break;
+                        } else {
+                            $questionOption->my_ans = 2;
+                        }
                     }
                 }
             }
