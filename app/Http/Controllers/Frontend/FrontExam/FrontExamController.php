@@ -991,7 +991,7 @@ class FrontExamController extends Controller
         }
 
         //student xm perticipant check
-        $xmAllResults   = CourseExamResult::where('course_section_content_id', $contentId)->get();
+        $xmAllResults = CourseExamResult::where('course_section_content_id', $contentId)->get();
         $userXmPerticipateStatus = false;
         foreach ($xmAllResults as $xmSingleResult)
         {
