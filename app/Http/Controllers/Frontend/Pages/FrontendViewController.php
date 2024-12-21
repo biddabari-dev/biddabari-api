@@ -31,9 +31,7 @@ class FrontendViewController extends Controller
     {
         if (str()->contains(url()->current(), '/api/'))
         {
-            $this->products = Product::whereStatus(1)->select('id','product_author_id', 'stock_amount','title','image','price', 'discount_amount', 'discount_start_date', 'discount_end_date', 'slug')->get();
-        } else {
-            $this->products = Product::whereStatus(1)->select('id','product_author_id', 'stock_amount','title','image','price', 'discount_amount', 'discount_start_date', 'discount_end_date', 'slug')->paginate(9);
+            $this->products = Product::whereStatus(1)->select('id','product_author_id', 'stock_amount','title','image','price', 'discount_amount', 'discount_start_date', 'discount_end_date', 'slug')->paginate(20);
         }
         foreach ($this->products as $product)
         {
@@ -47,8 +45,7 @@ class FrontendViewController extends Controller
                 $product->has_discount_validity = 'false';
             }
             $product->image = asset($product->image);
-//            $product->pdf = asset($product->pdf);
-//            $product->featured_image = asset($product->featured_image);
+
             $product->order_status = ViewHelper::checkIfProductIsPurchased($product);
         }
 
@@ -121,7 +118,7 @@ class FrontendViewController extends Controller
                 'message'   => "Data not found!",
             ], 404);
         }
-        $latestCourses = $teacher->courses()->where('status', 1)->latest()->take(3)->get();
+        $latestCourses = $teacher->courses()->where('status', 1)->latest()->take(3)->get(['id','title','slug','banner','description']);
 
         return response()->json([
             'teacher' => $teacher,
@@ -284,18 +281,8 @@ class FrontendViewController extends Controller
         $this->blogCategories = BlogCategory::whereStatus(1)->orderBy('order', 'ASC')->select('id', 'name', 'parent_id', 'image', 'slug')->get();
         $this->blogs = Blog::whereStatus(1)->with(['blogCategory' => function($blogCategory){
             $blogCategory->select('id', 'name', 'slug')->get();
-        }])->paginate(9);
-        if (str()->contains(url()->current(), '/api/'))
-        {
-            foreach ($this->blogCategories as $blogCategory)
-            {
-                $blogCategory->image = asset($blogCategory->image);
-            }
-            foreach ($this->blogs as $blog)
-            {
-                $blog->image = asset($blog->image);
-            }
-        }
+        }])->paginate(10);
+
         $this->data = [
             'blogCategories'    => $this->blogCategories,
             'blogs'             => $this->blogs,
@@ -319,8 +306,10 @@ class FrontendViewController extends Controller
         $this->blog = Blog::find($id);
         if (isset($this->blog))
         {
+            $this->blog->increment('hit_count');
             $this->comments = ContactMessage::where(['status' => 1, 'type' => 'blog', 'parent_model_id' => $this->blog->id, 'is_seen' => 1])->get();
         }
+
         $this->blog->image = asset($this->blog->image);
         $this->data = [
             'blog'    => $this->blog,
@@ -433,9 +422,14 @@ class FrontendViewController extends Controller
     {
         $teacher = Teacher::find($id);
         if (!$teacher) {
-            return response()->view('errors.404', [], 404);
+            return response()->json([
+                'status'   => false,
+                'message'   => "Data not found!",
+            ], 404);
         }
-        $latestCourses = $teacher->courses()->where('status', 1)->latest()->take(3)->get();
+
+        $latestCourses = $teacher->courses()->where('status', 1)->latest()->take(3)->get(['id','title','slug','banner','description']);
+
         $this->data = [
             'teacher' => $teacher,
             'latestCourses' => $latestCourses,

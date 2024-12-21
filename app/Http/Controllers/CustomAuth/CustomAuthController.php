@@ -24,43 +24,39 @@ class CustomAuthController extends Controller
     public function login(Request $request)
     {
 
-        // $this->validate($request, [
-        //     'mobile'   => ['required','numeric|regex:/^(?:\+88|88)?(01[3-9]\d{8})$/']
 
-        // ]);
-        if (str()->contains(url()->current(), '/api/'))
-        {
-            $pass = rand(10000, 99999);
+        // if (str()->contains(url()->current(), '/api/'))
+        // {
+        //     $pass = rand(10000, 99999);
 
-            if(isset($request->name)){
+        //     if(isset($request->name)){
+        //         $check = User::where('mobile',$request->mobile)->first();
 
-                $check = User::where('mobile',$request->mobile)->first();
+        //         if ($check != null) {
+        //             # code...
+        //             $user = Auth::loginUsingId($check->id);
+        //         } else {
+        //             # code...
+        //             $add = new User;
+        //             $add->name = $request->name;
+        //             $add->mobile = $request->mobile;
+        //             $add->password = Hash::make($pass);
+        //             $add->save();
 
-                if ($check != null) {
-                    # code...
-                    $user = Auth::loginUsingId($check->id);
-                } else {
-                    # code...
-                    $add = new User;
-                    $add->name = $request->name;
-                    $add->mobile = $request->mobile;
-                    $add->password = Hash::make($pass);
-                    $add->save();
-
-                    $user = Auth::loginUsingId($add->id);
-                }
+        //             $user = Auth::loginUsingId($add->id);
+        //         }
 
 
 
-                return response()->json([
-                    'user'  => $user,
-                    'auth_token' => $user->createToken('auth_token')->plainTextToken,
-                    'status'    => 200
-                ]);
+        //         return response()->json([
+        //             'user'  => $user,
+        //             'auth_token' => $user->createToken('auth_token')->plainTextToken,
+        //             'status'    => 200
+        //         ]);
 
-            }
+        //     }
 
-        }
+        // }
 
         if (auth()->attempt($request->only(['mobile', 'password']), $request->remember_me))
         {
@@ -99,49 +95,7 @@ class CustomAuthController extends Controller
             return redirect()->route('login')->with('error', 'Phone no and Password does not match . Please try again.');
         }
 
-//         if (auth()->attempt($request->only(['mobile', 'password']), $request->remember_me))
-//         {
 
-//             $this->user = auth()->user();
-//             $this->user->device_token = session()->getId();
-//             $this->user->save();
-//             if (str()->contains(url()->current(), '/api/'))
-//             {
-
-//                 return response()->json([
-//                     'user'  => $this->user,
-//                     'auth_token' => $this->user->createToken('auth_token')->plainTextToken,
-//                     'status'    => 200
-//                 ]);
-//             } else {
-
-// //                 if (Session::has('course_redirect_url'))
-// //                 {
-
-// // //                    return Session::get('course_redirect_url');
-// //                     $redirectUrl = Session::get('course_redirect_url');
-// //                     // Session::forget('course_redirect_url');
-// //                     return response()->json(['status' => 'success','url'=>$redirectUrl]);
-// // //                    return redirect('/')->with('success', 'You are successfully logged in.');
-// //                 }
-//                 if ($request->ajax())
-//                 {
-//                     // return 'ajax';
-//                     return response()->json(['status' => 'success', 'url' => url('/')]);
-//                 }
-//                 // return 'wrong';
-//                 return redirect()->route('home')->with('success', 'You are successfully logged in.');
-//             }
-//         }
-//         if (str()->contains(url()->current(), '/api/')) {
-//             return response()->json(['error' => 'Email and Password does not match . Please try again.'],500);
-//         } else {
-//             if ($request->ajax())
-//             {
-//                 return response()->json(['status' => 'error']);
-//             }
-//             return redirect()->route('login')->with('error', 'Something went wrong. Please try again');
-//         }
     }
 
     public function register (UserRegisterRequest $request)
