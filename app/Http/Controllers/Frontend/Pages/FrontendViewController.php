@@ -334,7 +334,7 @@ class FrontendViewController extends Controller
     {
 //        $this->jobCirculars = Circular::whereStatus(1)->latest()->select('id', 'slug', 'image', 'circular_category_id', 'user_id', 'job_title', 'created_at')->paginate(12);
         $this->jobCirculars = CircularCategory::whereStatus(1)->select('id', 'title', 'image')->whereHas('circulars')->with(['circulars' => function($circulars){
-            $circulars->whereStatus(1)->latest()->select('id', 'slug', 'image', 'circular_category_id', 'user_id', 'job_title', 'created_at')->get();
+            $circulars->whereStatus(1)->latest()->select('id', 'slug', 'image', 'circular_category_id', 'user_id', 'job_title', 'created_at', 'expire_date','description')->get();
         }])->get();
         if (str()->contains(url()->current(), '/api/'))
         {
