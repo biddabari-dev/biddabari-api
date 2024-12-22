@@ -10,6 +10,7 @@ use App\Models\Backend\ProductManagement\Product;
 use App\Models\Backend\UserManagement\Student;
 use App\Models\Scopes\Searchable;
 use App\Models\User;
+use Carbon\Carbon;
 use Darryldecode\Cart\Facades\CartFacade as Cart;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -243,6 +244,22 @@ class ParentOrder extends Model
             $batchExam = BatchExam::find($modelId);
             $batchExam->students()->detach(Student::where('user_id', $userId)->first()->id);
         }
+    }
+
+    public function hasValidity()
+    {
+        if (!$this->batchExamSubscription) {
+            return 'false'; // No subscription available
+        }
+
+        // Calculate expiration date
+        $expireDate = $this->updated_at->addDays($this->batchExamSubscription->package_duration_in_days ?? 0);
+
+        if (Carbon::now()->lessThan($expireDate)) {
+            return $this->status === 'approved' ? 'true' : ($this->status === 'pending' ? 'pending' : 'false');
+        }
+
+        return "false"; // Expired
     }
 
     public function user()

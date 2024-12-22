@@ -23,6 +23,7 @@ use App\Models\Backend\ProductManagement\ProductDeliveryOption;
 use App\Models\Backend\UserManagement\Student;
 use App\Models\Frontend\AdditionalFeature\ContactMessage;
 use App\Models\Frontend\CourseOrder\CourseOrder;
+use Illuminate\Support\Facades\Cache;
 use App\Models\User;
 use http\Env\Response;
 use Illuminate\Http\Request;
@@ -33,59 +34,64 @@ class StudentController extends Controller
 {
     protected $data = [], $courseOrders = [], $myCourses = [], $myProfile, $myPayments = [], $loggedUser, $course, $courses = [], $courseSections, $notices = [];
     protected $hasValidSubscription, $exam, $exams = [], $tempExamArray = [], $examOrders = [], $order, $orders = [], $products = [], $product, $affiliateRegister;
+
     public function dashboard ()
     {
-//        $isStudent = false;
-        foreach (auth()->user()->roles as $role)
-        {
-            if ($role->id != 4)
-            {
-                return redirect('/')->with('error', 'You don\'t have student access.');
-//                $isStudent = true;
-            }
-        }
-//        if ($isStudent == false)
-//        {
-//            return redirect()->route('dashboard')->with('success', 'You logged in successfully.');
-////            return back()->with('error', 'You don\'t have permission to view this page.');
-//        }
-        $this->orders = ParentOrder::whereUserId(auth()->id())->latest()->get();
-        $totalEnrolledCourse = 0;
-        $totalEnrolledExams = 0;
-        $totalPurchasedProducts = 0;
-        $totalPendingOrders = 0;
-        foreach ($this->orders as $order)
-        {
-            if ($order->ordered_for == 'course' && $order->status == 'approved')
-            {
-                $totalEnrolledCourse++;
-            }
-            if ($order->ordered_for == 'batch_exam' && $order->status == 'approved')
-            {
-                $totalEnrolledExams++;
-            }
-            if ($order->ordered_for == 'product' && $order->status == 'approved')
-            {
-                $totalPurchasedProducts++;
-            }
-            if ($order->status == 'pending')
-            {
-                $totalPendingOrders++;
-            }
-        }
+
+        // if (!auth()->user()->roles()->where('id', 4)->exists()) {
+        //     return response()->json([
+        //         'error' => true,
+        //         'message' => "You don't have student access!"
+        //     ], 403); // 403 Forbidden status
+        // }
+
+        // Cache the user's orders
+        $this->orders = Cache::remember("user_orders_" . auth()->id(), now()->addMinutes(10), function () {
+            return ParentOrder::with('course:id,title', 'batchExam:id,title')
+                ->whereUserId(auth()->id())
+                ->latest()
+                ->get(['id', 'parent_model_id', 'ordered_for', 'total_amount', 'paid_amount', 'status']);
+        });
+
+        // Cache the aggregated order data
+        $order = Cache::remember("user_order_summary_" . auth()->id(), now()->addMinutes(10), function () {
+            return ParentOrder::selectRaw("
+                COUNT(*) AS total_order,
+                COUNT(CASE WHEN ordered_for = 'course' THEN id ELSE NULL END) AS course_order,
+                COUNT(CASE WHEN ordered_for = 'batch_exam' THEN id ELSE NULL END) AS exam_order,
+                COUNT(CASE WHEN ordered_for = 'product' THEN id ELSE NULL END) AS product_order,
+                COUNT(CASE WHEN status = 'pending' THEN id ELSE NULL END) AS total_pending_orders
+            ")
+            ->whereUserId(auth()->id())
+            ->first();
+        });
+
         $this->data = [
-            'orders'    => $this->orders,
-            'totalEnrolledCourse'    => $totalEnrolledCourse,
-            'totalEnrolledExams'    => $totalEnrolledExams,
-            'totalPurchasedProducts'    => $totalPurchasedProducts,
-            'totalPendingOrders'    => $totalPendingOrders,
+            'orders'                    => $this->orders,
+            'total_order'               => $order->total_order ?? 0,
+            'totalEnrolledCourse'       => $order->course_order ?? 0,
+            'totalEnrolledExams'        => $order->exam_order ?? 0,
+            'totalPurchasedProducts'    => $order->product_order ?? 0,
+            'totalPendingOrders'        => $order->total_pending_orders ?? 0,
         ];
+
         return ViewHelper::checkViewForApi($this->data, 'frontend.student.dashboard.dashboard');
     }
 
     public function myCourses ()
     {
-        $this->courseOrders = ParentOrder::where(['user_id'=> auth()->id(), 'ordered_for' => 'course'])->where('status', '!=', 'canceled')->select('id', 'parent_model_id', 'user_id', 'status')->with('course:id,title,price,banner,slug,status')->get();
+        //$this->courseOrders = ParentOrder::where(['user_id'=> auth()->id(), 'ordered_for' => 'course'])->where('status', '!=', 'canceled')->select('id', 'parent_model_id', 'user_id', 'status')->with('course:id,title,price,banner,slug,status')->get();
+        $this->courseOrders = Cache::remember("user_".auth()->id()."_course_orders", 600, function () {
+            return ParentOrder::where([
+                'user_id' => auth()->id(),
+                'ordered_for' => 'course',
+            ])
+            ->where('status', '!=', 'canceled')
+            ->select('id', 'parent_model_id', 'user_id', 'status')
+            ->with('course:id,title,price,banner,slug,status')
+            ->get();
+        });
+
         $this->data = [
             'courseOrders'  => $this->courseOrders
         ];
@@ -94,30 +100,56 @@ class StudentController extends Controller
 
     public function showCourseContents ($courseId)
     {
-        $this->course = Course::whereId($courseId)->select('id', 'title', 'slug', 'status')->with(['courseSections' => function($courseSections){
-            $courseSections->whereStatus(1)->orderBy('order', 'ASC')->where('available_at', '<=', currentDateTimeYmdHi())->select('id', 'course_id', 'title', 'available_at', 'is_paid')->with(['courseSectionContents' => function($courseSectionContents){
-                $courseSectionContents->where('available_at_timestamp', '<=', strtotime(currentDateTimeYmdHi()))->whereStatus(1)->orderBy('order', 'ASC')->get();
-            }])->get();
-        }])->first();
+        // $this->course = Course::whereId($courseId)->select('id', 'title', 'slug', 'status')->with(['courseSections' => function($courseSections){
+        //     $courseSections->whereStatus(1)->orderBy('order', 'ASC')->where('available_at', '<=', currentDateTimeYmdHi())->select('id', 'course_id', 'title', 'available_at', 'is_paid')->with(['courseSectionContents' => function($courseSectionContents){
+        //         $courseSectionContents->where('available_at_timestamp', '<=', strtotime(currentDateTimeYmdHi()))->whereStatus(1)->orderBy('order', 'ASC')->get();
+        //     }])->get();
+        // }])->first();
 
 
-        foreach ($this->course->courseSections as $courseSection)
-        {
-            foreach ($courseSection->courseSectionContents as $courseSectionContent)
-            {
-                if ($courseSectionContent->written_exam_duration_in_minutes != null) {
-                    # code...
-                    $courseSectionContent->written_exam_duration_in_minutes = (int)$courseSectionContent->written_exam_duration_in_minutes;
-                }
+        // foreach ($this->course->courseSections as $courseSection)
+        // {
+        //     foreach ($courseSection->courseSectionContents as $courseSectionContent)
+        //     {
+        //         if ($courseSectionContent->written_exam_duration_in_minutes != null) {
+        //             # code...
+        //             $courseSectionContent->written_exam_duration_in_minutes = (int)$courseSectionContent->written_exam_duration_in_minutes;
+        //         }
 
-                if ($courseSectionContent->has_class_xm == 1)
-                {
-                    $courseSectionContent->classXmStatus = ViewHelper::checkClassXmStatus($courseSectionContent);
-                } else {
-                    $courseSectionContent->classXmStatus = '0';
-                }
-            }
-        }
+        //         if ($courseSectionContent->has_class_xm == 1)
+        //         {
+        //             $courseSectionContent->classXmStatus = ViewHelper::checkClassXmStatus($courseSectionContent);
+        //         } else {
+        //             $courseSectionContent->classXmStatus = '0';
+        //         }
+        //     }
+        // }
+
+        $currentTime = currentDateTimeYmdHi();
+        $cacheKey = "course_with_sections_{$courseId}_{$currentTime}";
+
+        $this->course = Cache::remember($cacheKey, 600, function () use ($courseId, $currentTime) {
+            return Course::whereId($courseId)
+                ->select('id', 'title', 'slug', 'status')
+                ->with([
+                    'courseSections' => function ($query) use ($currentTime) {
+                        $query->whereStatus(1)
+                            ->where('available_at', '<=', $currentTime)
+                            ->orderBy('order', 'ASC')
+                            ->select('id', 'course_id', 'title', 'available_at', 'is_paid')
+                            ->with([
+                                'courseSectionContents' => function ($subQuery) use ($currentTime) {
+                                    $subQuery->where('available_at_timestamp', '<=', strtotime($currentTime))
+                                        ->whereStatus(1)
+                                        ->orderBy('order', 'ASC')
+                                        ->select('id', 'course_section_id', 'title', 'available_at_timestamp', 'has_class_xm','content_type','video_vendor','video_link'); // Only required fields
+                                },
+                            ]);
+                    },
+                ])
+                ->first();
+        });
+
         $this->data = [
             'course'    => $this->course
         ];
@@ -133,11 +165,30 @@ class StudentController extends Controller
                 'allExams'  => $this->exams,
             ];
         } else {
-            $this->exam = BatchExam::whereId($batchExamId)->select('id', 'title', 'slug', 'status')->with(['batchExamSections' => function($batchExamSections){
-                $batchExamSections->orderBy('order', 'ASC')->where('available_at', '<=', currentDateTimeYmdHi())->whereStatus(1)->select('id', 'batch_exam_id', 'title', 'available_at', 'is_paid')->with(['batchExamSectionContents' => function($batchExamSectionContents){
-                    $batchExamSectionContents->where('available_at_timestamp', '<=', strtotime(currentDateTimeYmdHi()))->whereStatus(1)->orderBy('order', 'ASC')->whereIsPaid(1)->get();
-                }])->get();
-            }])->first();
+            $currentTime = currentDateTimeYmdHi();
+            $cacheKey = "batch_exam_with_sections_{$batchExamId}_{$currentTime}";
+
+            $this->exam = Cache::remember($cacheKey, 600, function () use ($batchExamId, $currentTime) {
+                return BatchExam::whereId($batchExamId)
+                    ->select('id', 'title', 'slug', 'status') // Only fetch required fields
+                    ->with([
+                        'batchExamSections' => function ($query) use ($currentTime) {
+                            $query->where('available_at', '<=', $currentTime)
+                                ->whereStatus(1)
+                                ->orderBy('order', 'ASC')
+                                ->select('id', 'batch_exam_id', 'title', 'available_at', 'is_paid') // Only required fields
+                                ->with([
+                                    'batchExamSectionContents' => function ($subQuery) use ($currentTime) {
+                                        $subQuery->where('available_at_timestamp', '<=', strtotime($currentTime))
+                                            ->whereStatus(1)
+                                            ->whereIsPaid(1)
+                                            ->orderBy('order', 'ASC')
+                                            ->select('id', 'batch_exam_section_id', 'title', 'available_at_timestamp', 'is_paid','content_type'); // Only required fields
+                                    },
+                                ]);
+                        },
+                    ])->first();
+            });
 
             $this->data = [
                 'batchExam'    => $this->exam
@@ -149,38 +200,66 @@ class StudentController extends Controller
 
     public function myExams ()
     {
-        $this->loggedUser = ViewHelper::loggedUser();
-        $this->exams   = ParentOrder::where(['ordered_for' => 'batch_exam', 'user_id' => $this->loggedUser->id])->where('status', '!=', 'canceled')->with([
-            'batchExam' => function($batchExam) {
-                $batchExam->whereStatus(1)->select('id', 'title', 'banner', 'slug', 'sub_title', 'is_paid', 'is_featured', 'is_approved', 'status', 'is_master_exam')->get();
-            }
-        ])->select('id', 'user_id', 'parent_model_id', 'batch_exam_subscription_id', 'ordered_for', 'status')->get();
-        foreach ($this->exams as $exam)
-        {
-            $exam->has_validity = ViewHelper::checkIfBatchExamIsEnrollmentAndHasValidity($this->loggedUser, $exam->batchExam);
-            $exam->order_status = ViewHelper::checkUserBatchExamIsEnrollment($this->loggedUser, $exam->batchExam);
-        }
+        // $this->loggedUser = ViewHelper::loggedUser();
+        // $this->exams   = ParentOrder::where(['ordered_for' => 'batch_exam', 'user_id' => $this->loggedUser->id])->where('status', '!=', 'canceled')->with([
+        //     'batchExam' => function($batchExam) {
+        //         $batchExam->whereStatus(1)->select('id', 'title', 'banner', 'slug', 'sub_title', 'is_paid', 'is_featured', 'is_approved', 'status', 'is_master_exam')->get();
+        //     }
+        // ])->select('id', 'user_id', 'parent_model_id', 'batch_exam_subscription_id', 'ordered_for', 'status')->get();
+        // foreach ($this->exams as $exam)
+        // {
+        //     $exam->has_validity = ViewHelper::checkIfBatchExamIsEnrollmentAndHasValidity($this->loggedUser, $exam->batchExam);
+        //     $exam->order_status = ViewHelper::checkUserBatchExamIsEnrollment($this->loggedUser, $exam->batchExam);
+        // }
+
+        $this->exams = ParentOrder::with([
+            'batchExam' => function ($query) {
+                $query->select('id', 'title', 'banner', 'slug', 'sub_title', 'is_paid', 'is_featured', 'is_approved', 'status', 'is_master_exam');
+            },
+            'batchExamSubscription' // Load subscription for validity check
+        ])->where([
+            'ordered_for' => 'batch_exam',
+            'user_id' => auth()->id(),
+        ])->where('status', '!=', 'canceled')
+            ->select('id', 'user_id', 'parent_model_id', 'batch_exam_subscription_id', 'ordered_for', 'status')
+            ->get();
+
+
+        // Add the validity status to each exam
+        $this->exams->each(function ($exam) {
+            $exam->has_validity = $exam->hasValidity(); // Call the model method
+            $exam->order_status = $exam->status == "approved" ? "true" : "false"; // Call the model method
+        });
+
         $this->data = [
             'exams' => $this->exams
         ];
         return ViewHelper::checkViewForApi($this->data, 'frontend.student.my-pages.exams');
     }
 
+
     public function myProducts ()
     {
-        $this->loggedUser = ViewHelper::loggedUser();
-        $this->products   = ParentOrder::where(['ordered_for' => 'product', 'user_id' => $this->loggedUser->id])->with([
-            'product' => function($product) {
-                $product->whereStatus(1)->select('id', 'product_author_id', 'title', 'image', 'slug', 'featured_pdf', 'pdf')->with('productAuthor')->get();
-            }
-        ])->select('id', 'user_id', 'parent_model_id', 'batch_exam_subscription_id', 'ordered_for', 'status')->get();
-        foreach ($this->products as $product)
-        {
-            $product->image = asset($product->image);
-        }
+        $userId = auth()->id();
+        $cacheKey = "user_products_{$userId}";
+
+        $this->products = Cache::remember($cacheKey, now()->addMinutes(10), function () use ($userId) {
+            return ParentOrder::where(['ordered_for' => 'product', 'user_id' => $userId])
+                ->with([
+                    'product' => function ($product) {
+                        $product->where('status', 1)
+                            ->select('id', 'product_author_id', 'title', 'image', 'slug', 'featured_pdf', 'pdf')
+                            ->with('productAuthor');
+                    }
+                ])
+                ->select('id', 'user_id', 'parent_model_id', 'batch_exam_subscription_id', 'ordered_for', 'status')
+                ->get();
+        });
+
         $this->data = [
             'products' => $this->products
         ];
+
         return ViewHelper::checkViewForApi($this->data, 'frontend.student.my-pages.products');
     }
 

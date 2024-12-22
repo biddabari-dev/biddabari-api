@@ -45,7 +45,6 @@ Route::prefix('v1')->name('api.')->group(function (){
 
     Route::post('/search-content-home', [BasicViewController::class, 'searchContentHome']);
 
-
     Route::get('web-home', [BasicViewController::class, 'home'])->name('web-home');
     Route::get('all-courses', [BasicViewController::class, 'allCourses'])->name('all-courses');
     Route::get('popular-courses', [BasicViewController::class, 'popularCourse'])->name('popular-courses');
@@ -95,7 +94,7 @@ Route::prefix('v1')->name('api.')->group(function (){
     Route::get('get-batch-exam-text-type-content', [StudentController::class, 'getBatchExamTextTypeContent']);
     Route::get('get-delivery-charge-for-app', [StudentController::class, 'getDeliveryChargeForApp']);
 
-//    temp routes
+//  temp routes
     Route::post('check-user-status-for-app', [CustomAuthController::class, 'checkUserForApp']);
 
     Route::get('/favourite-question/{user_id}/{question_id}', [QuestionStoreController::class, 'setFavouriteQuestion'])->name('set-fav-que');
@@ -109,8 +108,8 @@ Route::prefix('v1')->name('api.')->group(function (){
         'verified',
     ])->group(function (){
         Route::post('place-course-order/{course_id}', [CheckoutController::class, 'placeCourseOrder'])->name('place-course-order');
-
         Route::post('/place-free-course-order/{course_id}', [CheckoutController::class, 'placeFreeCourseOrder']);
+
         Route::prefix('student')->name('student.')->group(function (){
             Route::get('dashboard', [StudentController::class, 'dashboard'])->name('dashboard');
             Route::post('profile-update', [StudentController::class, 'profileUpdate'])->name('profile-update');

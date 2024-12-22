@@ -31,6 +31,7 @@ use App\Models\Frontend\AdditionalFeature\ContactMessage;
 use App\Models\Frontend\CourseOrder\CourseOrder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class BasicViewController extends Controller
@@ -40,16 +41,15 @@ class BasicViewController extends Controller
     protected $comments = [], $galleries = [], $galleryImage, $batchExams = [];
     public function home ()
     {
-
         // $this->batchExams  = BatchExam::where(['status' => 1, 'is_master_exam' => 0, 'is_paid' => 1])->select('id', 'title', 'banner', 'slug')->take(6)->get();
         $this->courseCategories = CourseCategory::whereStatus(1)->where('parent_id', 0)->orderBy('order', 'ASC')->select('id', 'name', 'image', 'slug', 'icon', 'order', 'status')->take(8)->get();
         $this->courses = Course::whereStatus(1)->where(['is_featured' => 1])->latest()->select('id', 'title', 'sub_title', 'price', 'banner', 'total_video', 'total_audio', 'total_pdf', 'total_exam', 'total_note', 'total_zip', 'total_live', 'total_link','total_file','total_written_exam', 'slug', 'discount_type', 'discount_amount', 'starting_date_time','admission_last_date','alt_text','banner_title')->take(9)->get();
-        foreach ($this->courses as $course)
-        {
-            $course->order_status = ViewHelper::checkIfCourseIsEnrolled($course);
-        }
-        $this->products = Product::whereStatus(1)->latest()->select('id', 'title', 'image', 'slug', 'description','stock_amount','price', 'slug')->take(8)->get();
-//        $this->homeSliderCourses = Course::where('show_home_slider', 1)->select('id', 'slug', 'title', 'banner', 'description')->get();
+        // foreach ($this->courses as $course)
+        // {
+        //     $course->order_status = ViewHelper::checkIfCourseIsEnrolled($course);
+        // }
+        $this->products = Product::whereStatus(1)->latest()->select('id', 'price', 'title', 'image', 'slug', 'stock_amount', 'slug')->take(8)->get();
+//      $this->homeSliderCourses = Course::where('show_home_slider', 1)->select('id', 'slug', 'title', 'banner', 'description')->get();
         $this->homeSliderCourses = Advertisement::whereStatus(1)->whereContentType('course')->select('id', 'title', 'content_type', 'description','link','image')->take(6)->get();
         $this->data = [
             'courseCategories'  => $this->courseCategories,
@@ -105,11 +105,11 @@ class BasicViewController extends Controller
 
     public function appHomeProducts ()
     {
-        $data = Product::whereStatus(1)->latest()->select('id', 'title', 'image', 'price', 'stock_amount','slug')->get();
-        foreach ($data as $datum)
-        {
-            $datum->image = asset($datum->image);
-        }
+        $data = Product::whereStatus(1)->latest()->select('id', 'title', 'image', 'price', 'stock_amount','slug')->take(8)->get();
+        // foreach ($data as $datum)
+        // {
+        //     $datum->image = asset($datum->image);
+        // }
         return response()->json(['products' => $data]);
     }
 
@@ -127,32 +127,40 @@ class BasicViewController extends Controller
         ]);
     }
 
+
+
     public function appHomeSliderCourses()
     {
-        $data = Advertisement::whereStatus(1)
-            ->whereContentType('course')
-            ->take(5)
-            ->select('id', 'title', 'content_type', 'image', 'link', 'description')
-            ->get();
+        // Cache the result for 10 minutes (adjust as needed)
+        $data = Cache::remember('app_home_slider_courses', now()->addMinutes(10), function () {
+            $advertisements = Advertisement::whereStatus(1)
+                ->whereContentType('course')
+                ->take(5)
+                ->select('id', 'title', 'content_type', 'image', 'link', 'description')
+                ->get();
 
-        foreach ($data as $datum) {
-            $datum->image = asset($datum->image);
+            foreach ($advertisements as $ad) {
+                $ad->image = asset($ad->image);
 
-            if ($datum->content_type == 'course') {
-                $path = parse_url($datum->link, PHP_URL_PATH);
-                $slug = basename($path);
-                $course = Course::where('slug', $slug)->first();
-                $datum->parent_model_id = $course->id ?? null;
-            } elseif ($datum->content_type == 'book') {
-                $path = parse_url($datum->link, PHP_URL_PATH);
-                $slug = basename($path);
-                $book = Product::where('slug', $slug)->first();
-                $datum->parent_model_id = $book->id ?? null;
+                if ($ad->content_type == 'course') {
+                    $path = parse_url($ad->link, PHP_URL_PATH);
+                    $slug = basename($path);
+                    $course = Course::where('slug', $slug)->first();
+                    $ad->parent_model_id = $course->id ?? null;
+                } elseif ($ad->content_type == 'book') {
+                    $path = parse_url($ad->link, PHP_URL_PATH);
+                    $slug = basename($path);
+                    $book = Product::where('slug', $slug)->first();
+                    $ad->parent_model_id = $book->id ?? null;
+                }
             }
-        }
+
+            return $advertisements;
+        });
 
         return response()->json(['sliderCourses' => $data]);
     }
+
 
 
     public function appHomePopupNotification()
@@ -161,10 +169,10 @@ class BasicViewController extends Controller
         return response()->json(['popupNotification' => $this->data]);
     }
 
-    public function allCourses (Request $request)
+    public function  allCourses (Request $request)
     {
        // Fetch the required course categories and their first course
-        $this->courseCategories  = CourseCategory::whereStatus(1)->where('parent_id', 0)->orderBy('order', 'ASC')->select('id', 'name', 'image', 'slug', 'icon', 'order', 'status')->take(8)->get();
+        $this->courseCategories  = CourseCategory::whereStatus(1)->where('parent_id', 0)->orderBy('order', 'ASC')->select('id', 'name', 'image', 'slug', 'icon', 'order', 'status')->take(12)->get();
 
         // Fetch the featured courses directly without looping, using only necessary fields
         $courses = Course::where('status', 1)
@@ -190,10 +198,10 @@ class BasicViewController extends Controller
             'courseCategories' => function($courseCategories){
                 $courseCategories->whereStatus(1)->orderBy('order','ASC')->select('id', 'parent_id','name', 'image', 'icon', 'slug', 'status')->get();
             }])->first();
-        foreach ($this->courseCategory->courses as $course)
-        {
-            $course->order_status = ViewHelper::checkIfCourseIsEnrolled($course);
-        }
+        // foreach ($this->courseCategory->courses as $course)
+        // {
+        //     $course->order_status = ViewHelper::checkIfCourseIsEnrolled($course);
+        // }
         $this->data = ['courseCategory' => $this->courseCategory];
         return ViewHelper::checkViewForApi($this->data, 'frontend.courses.course-category', 'Category Not Found');
     }
@@ -339,8 +347,8 @@ class BasicViewController extends Controller
                 'reqFor'  => $type,
                 'course'    => $this->course,
                 'batch_exam_subscription_id'    => $request->si
-//                    'discountStatus'   => dateTimeFormatYmdHi($this->course->discount_start_date) < currentDateTimeYmdHi() && dateTimeFormatYmdHi($this->course->discount_end_date) > currentDateTimeYmdHi() ? 'valid' : 'not-valid'
-//                'discountStatus'   => isset($this->course->discount_start_date) && !empty($this->course->discount_start_date) ? (dateTimeFormatYmdHi($this->course->discount_start_date) < currentDateTimeYmdHi() && dateTimeFormatYmdHi($this->course->discount_end_date) > currentDateTimeYmdHi() ? 'valid' : 'not-valid') : 'not-valid'
+//              'discountStatus'   => dateTimeFormatYmdHi($this->course->discount_start_date) < currentDateTimeYmdHi() && dateTimeFormatYmdHi($this->course->discount_end_date) > currentDateTimeYmdHi() ? 'valid' : 'not-valid'
+//              'discountStatus'   => isset($this->course->discount_start_date) && !empty($this->course->discount_start_date) ? (dateTimeFormatYmdHi($this->course->discount_start_date) < currentDateTimeYmdHi() && dateTimeFormatYmdHi($this->course->discount_end_date) > currentDateTimeYmdHi() ? 'valid' : 'not-valid') : 'not-valid'
             ];
             return ViewHelper::checkViewForApi($this->data, 'frontend.courses.checkout');
         } else {

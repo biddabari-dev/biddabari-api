@@ -13,25 +13,19 @@ use App\Models\Backend\BatchExamManagement\BatchExamCategory;
 use App\Models\Backend\BatchExamManagement\BatchExamResult;
 use App\Models\Backend\BatchExamManagement\BatchExamSectionContent;
 use App\Models\Backend\ExamManagement\AssignmentFile ;
-use App\Models\Backend\Course\Course;
 use App\Models\Backend\Course\CourseClassExamResult;
 use App\Models\Backend\Course\CourseExamResult;
 use App\Models\Backend\Course\CourseSectionContent;
 use App\Models\Backend\ExamManagement\Exam;
-use App\Models\Backend\ExamManagement\ExamCategory;
-use App\Models\Backend\ExamManagement\ExamOrder;
+
 use App\Models\Backend\ExamManagement\ExamResult;
-use App\Models\Backend\ExamManagement\ExamSubscriptionPackage;
 use App\Models\Backend\OrderManagement\ParentOrder;
 use App\Models\Backend\QuestionManagement\QuestionOption;
 use App\Models\Backend\QuestionManagement\QuestionStore;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Validator;
-use Response;
 use function PHPUnit\Framework\directoryExists;
 
 class FrontExamController extends Controller
@@ -852,6 +846,7 @@ class FrontExamController extends Controller
 
     public function showAllExams ()
     {
+
         // $masterExam = BatchExam::whereIsMasterExam(1)->with('batchExamSubscriptions')->first();
         // if (isset($masterExam))
         // {
@@ -1111,7 +1106,7 @@ class FrontExamController extends Controller
         }
 
         //student xm perticipant check
-        $xmAllResults   = CourseExamResult::where('course_section_content_id', $contentId)->get();
+        $xmAllResults = CourseExamResult::where('course_section_content_id', $contentId)->get();
         $userXmPerticipateStatus = false;
         foreach ($xmAllResults as $xmSingleResult)
         {
