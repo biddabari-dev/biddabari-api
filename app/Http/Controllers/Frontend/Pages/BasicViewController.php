@@ -535,7 +535,16 @@ class BasicViewController extends Controller
 
         $category = CourseCategory::where('slug',$slug)->first();
         $free_class_videos = CategoryWIseAssignVideo::with('categoryVideo:id,title,video_link')->where('category_id', $category->id)->where('type','video')->get();
-        $free_exams = CategoryWIseAssignVideo::with('categoryExam')->where('category_id', $category->id)->where('type','exam')->get();
+        $free_exams = CategoryWIseAssignVideo::with('categoryVideo:id,title,exam_total_questions,exam_duration_in_minutes,exam_end_time')->where('category_id', $category->id)->whereIn('type', ['exam', 'written_exam'])->get();
+        foreach ($free_exams as $exam) {
+            if ($exam->categoryVideo) {
+                $exam->provided_progress = ViewHelper::courseResultProgress($exam->categoryVideo->id);
+                $exam->participate_status = ViewHelper::checkCourseExamParticipateStatus($exam->categoryVideo->id);
+            } else {
+                $exam->provided_progress = 'false';
+                $exam->participate_status = 'false';
+            }
+        }
 
         return response()->json([
             'free_class_videos' => $free_class_videos,

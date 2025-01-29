@@ -72,6 +72,8 @@ Route::prefix('v1')->name('api.')->group(function (){
     Route::get('/remove-from-cart/{id}', [FrontendViewController::class, 'removeFromCart']);
     Route::get('/view-cart', [FrontendViewController::class, 'viewCart']);
     Route::get('/all-products', [FrontendViewController::class, 'allProducts']);
+    Route::get('/all-ebook', [FrontendViewController::class, 'alleBook']);
+    Route::get('/ebook-checkout/{slug}', [FrontendViewController::class, 'ebookCart'])->name('ebook-checkout');
     Route::get('/product-details/{id}', [FrontendViewController::class, 'productDetails']);
     Route::post('/place-product-order', [FrontendViewController::class, 'placeProductOrder']);
 
@@ -141,6 +143,12 @@ Route::prefix('v1')->name('api.')->group(function (){
             Route::get('show-course-exam-answers/{content_id}/{slug?}', [FrontExamController::class, 'showCourseExamAnswers']);
             Route::get('show-class-exam-answers/{content_id}/{slug?}', [FrontExamController::class, 'showCourseClassExamAnswers']);
             Route::get('show-batch-exam-answers/{content_id}/{slug?}', [FrontExamController::class, 'showBatchExamAnswers']);
+
+            Route::get('start-free-exam/{content_id}/{slug?}', [FrontExamController::class, 'startFreeExam'])->name('start-free-exam');
+            Route::get('show-practice-exam-answers/{content_id}', [FrontExamController::class, 'showPracticeExamAnswers'])->name('show-practice-exam-answers');
+            Route::get('show-practice-exam-ranking/{content_id}', [FrontExamController::class, 'showPracticeExamRanking'])->name('show-practice-exam-ranking');
+
+
         });
 
 //        delete user route for app production

@@ -16,6 +16,7 @@ use App\Models\Backend\ExamManagement\AssignmentFile ;
 use App\Models\Backend\Course\CourseClassExamResult;
 use App\Models\Backend\Course\CourseExamResult;
 use App\Models\Backend\Course\CourseSectionContent;
+use App\Models\Backend\Course\PracticeExamResult;
 use App\Models\Backend\ExamManagement\Exam;
 
 use App\Models\Backend\ExamManagement\ExamResult;
@@ -844,38 +845,69 @@ class FrontExamController extends Controller
     }
 
 
-    public function showAllExams ()
-    {
+    // public function showAllExams ()
+    // {
 
-        // $masterExam = BatchExam::whereIsMasterExam(1)->with('batchExamSubscriptions')->first();
-        // if (isset($masterExam))
-        // {
-        //     $masterExam->purchase_status = ViewHelper::checkUserBatchExamIsEnrollment(ViewHelper::loggedUser(), $masterExam);
-        // }
+    //     $masterExam = BatchExam::whereIsMasterExam(1)->with('batchExamSubscriptions')->first();
+    //     if (isset($masterExam))
+    //     {
+    //         $masterExam->purchase_status = ViewHelper::checkUserBatchExamIsEnrollment(ViewHelper::loggedUser(), $masterExam);
+    //     }
+
+    //     $this->examCategories = BatchExamCategory::where(['status' => 1, 'parent_id' => 0])->get();
+
+    //     // $allBatchExams = BatchExam::where(['status' => 1, 'is_master_exam' => 0, 'is_paid' => 1])->get();
+    //     $allBatchExams = BatchExam::where([
+    //         'status' => 1,
+    //         'is_master_exam' => 0,
+    //         'is_paid' => 1
+    //     ])->select('id', 'title', 'banner', 'slug', 'price', 'discount_type', 'discount_amount', 'admission_last_date')->get();
+
+    //     $allBatchExams = $allBatchExams->map(function ($exam) {
+    //         $exam->price = (float) $exam->price; // Cast price to float
+    //         return $exam;
+    //     });
+
+    //     $exam_sliders = Advertisement::whereStatus(1)->whereContentType('exam')->select('id', 'title', 'content_type', 'description','link','image')->take(6)->get();
+    //     return response()->json([
+    //         'examCategories'     => $this->examCategories,
+    //         'masterExam'    => $masterExam,
+    //         'allExams'      => $allBatchExams,
+    //         'exam_sliders'      => $exam_sliders,
+    //     ],200);
+
+    // }
+
+    public function showAllExams (Request $request)
+    {
+        $masterExam = BatchExam::whereIsMasterExam(1)->first();
+        if (isset($masterExam))
+        {
+            $masterExam->purchase_status = ViewHelper::checkUserBatchExamIsEnrollment(ViewHelper::loggedUser(), $masterExam);
+        }
 
         $this->examCategories = BatchExamCategory::where(['status' => 1, 'parent_id' => 0])->get();
 
-        // $allBatchExams = BatchExam::where(['status' => 1, 'is_master_exam' => 0, 'is_paid' => 1])->get();
-        $allBatchExams = BatchExam::where([
+
+        $allExams = BatchExam::where([
             'status' => 1,
             'is_master_exam' => 0,
             'is_paid' => 1
-        ])->select('id', 'title', 'banner', 'slug', 'price', 'discount_type', 'discount_amount', 'admission_last_date')->get();
-
-        $allBatchExams = $allBatchExams->map(function ($exam) {
-            $exam->price = (float) $exam->price; // Cast price to float
-            return $exam;
-        });
+        ])->select('id', 'title', 'banner', 'slug', 'price', 'discount_type', 'discount_amount', 'admission_last_date')->paginate(20);
 
         $exam_sliders = Advertisement::whereStatus(1)->whereContentType('exam')->select('id', 'title', 'content_type', 'description','link','image')->take(6)->get();
+
+
         return response()->json([
             'examCategories'     => $this->examCategories,
-            // 'masterExam'    => $masterExam,
-            'allExams'      => $allBatchExams,
+            'masterExam'    => $masterExam,
+            'allExams'      => $allExams,
             'exam_sliders'      => $exam_sliders,
         ],200);
 
     }
+
+
 
     public function categoryExams ($id, $name = null)
     {
@@ -1461,4 +1493,104 @@ class FrontExamController extends Controller
         session()->put('getXmDataToSession', $request->toArray());
         return response()->json('Xm DAta set success');
     }
+
+
+    public function startFreeExam ($contentId)
+    {
+        if (ViewHelper::authCheck())
+        {
+            if (session()->has('getXmStartStatus'))
+            {
+                if (session('getXmStartStatus')['xmStartStatus'] == 1)
+                {
+                    if (session('getXmStartStatus')['xmType'] == 'course')
+                    {
+                        return $this->commonGetCourseExamResul((object) session('getXmDataToSession'), session('getXmStartStatus')['xmContentId']);
+                    }
+                }
+            }
+
+            $this->exam = CourseSectionContent::with('questionStores.questionOptions')->whereId($contentId)->first();
+
+            $this->data = [
+                'exam'   => $this->exam,
+            ];
+            return ViewHelper::checkViewForApi($this->data, 'frontend.free-service.start');
+        } else {
+            return back()->with('error', 'Please Login First.');
+        }
+    }
+
+    public function showPracticeExamAnswers($contentId)
+    {
+
+        $this->sectionContent = CourseSectionContent::whereId($contentId)->select('id', 'course_section_id', 'parent_id', 'content_type', 'title', 'status', 'exam_end_time', 'exam_end_time_timestamp', 'exam_total_questions', 'exam_per_question_mark', 'exam_pass_mark', 'exam_duration_in_minutes', 'exam_negative_mark', 'exam_result_publish_time', 'exam_result_publish_time_timestamp', 'written_start_time', 'written_end_time', 'written_publish_time')->with(['questionStores' => function($questionStores){
+            $questionStores->select('id', 'question_type', 'question', 'question_description', 'question_image', 'question_video_link', 'written_que_ans', 'written_que_ans_description', 'has_all_wrong_ans', 'status', 'mcq_ans_description')->with('questionOptions')->get();
+        }])->first();
+
+        $xmAllResults   = CourseExamResult::where('course_section_content_id', $contentId)->get();
+        $userXmPerticipateStatus = false;
+        foreach ($xmAllResults as $xmSingleResult)
+        {
+            if ($xmSingleResult->user_id == ViewHelper::loggedUser()->id )
+            {
+                $userXmPerticipateStatus    = true;
+                break;
+            }
+        }
+        if (strtotime(currentDateTimeYmdHi()) > $this->sectionContent->exam_end_time_timestamp)
+        {
+            $userXmPerticipateStatus = true;
+        }
+        if (!$userXmPerticipateStatus)
+        {
+            return ViewHelper::returEexceptionError('You can\'t view the answers till exam ends.');
+        }
+        //        student xm perticipant check ends
+
+
+
+        if ($this->sectionContent->content_type == 'exam')
+        {
+            $getProvidedAnswers = PracticeExamResult::where(['course_section_content_id' => $contentId, 'user_id' => ViewHelper::loggedUser()->id])->first();
+            if (isset($getProvidedAnswers->provided_ans))
+            {
+                $this->ansLoop($this->sectionContent, (array) json_decode($getProvidedAnswers->provided_ans));
+            }
+        } elseif ($this->sectionContent->content_type == 'written_exam')
+        {
+            $writtenXmFile = PracticeExamResult::where(['xm_type' => 'written_exam', 'course_section_content_id' => $contentId,'user_id'=>ViewHelper::loggedUser()->id])->select('id', 'course_section_content_id', 'xm_type', 'user_id', 'written_xm_file')->first();
+            if (str()->contains(url()->current(), '/api/'))
+            {
+                $writtenXmFile = $writtenXmFile->written_xm_file;
+            }
+        }
+
+        $this->data = [
+            'content'   => $this->sectionContent,
+            'courseExamResult' => $getProvidedAnswers ?? null,
+            'writtenFile' => $writtenXmFile ?? null
+        ];
+        return ViewHelper::checkViewForApi($this->data, 'frontend.exams.course.show-ans');
+    }
+
+    public function showPracticeExamRanking($contentId)
+    {
+        $result = CourseExamResult::selectRaw('
+                COUNT(*) as total_students,
+                SUM(CASE WHEN status = "pass" THEN 1 ELSE 0 END) as passed_students,
+                SUM(CASE WHEN status = "fail" THEN 1 ELSE 0 END) as failed_students
+            ')->where('course_section_content_id', $contentId)
+                ->first();
+
+        $this->courseExamResults = PracticeExamResult::where(['course_section_content_id' => $contentId, 'user_id' => ViewHelper::loggedUser()->id])->with('user')->first();
+
+        $this->data = [
+            'courseExamResult'     => $this->courseExamResults,
+            'result'     => $result,
+        ];
+
+        return ViewHelper::checkViewForApi($this->data, 'frontend.free-service.show-ranking');
+    }
+
 }

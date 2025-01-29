@@ -31,7 +31,7 @@ class FrontendViewController extends Controller
     {
         if (str()->contains(url()->current(), '/api/'))
         {
-            $this->products = Product::whereStatus(1)->select('id','product_author_id', 'stock_amount','title','image','price', 'discount_amount', 'discount_start_date', 'discount_end_date', 'slug')->paginate(20);
+            $this->products = Product::whereStatus(1)->select('id','product_author_id', 'stock_amount','title','image','price', 'discount_amount', 'discount_start_date', 'discount_end_date', 'slug')->where('product_type','Book')->paginate(8);
         }
         foreach ($this->products as $product)
         {
@@ -92,6 +92,55 @@ class FrontendViewController extends Controller
             'product'   => $this->product,
             'reviews'  => $this->comments,
             'latestProducts' => $latestProducts,
+        ],200);
+
+    }
+
+    public function alleBook ()
+    {
+        if (str()->contains(url()->current(), '/api/'))
+        {
+            $this->products = Product::whereStatus(1)->select('id','product_author_id', 'stock_amount','title','image','price', 'discount_amount', 'discount_start_date', 'discount_end_date', 'slug')->where('product_type','eBook')->paginate(16);
+        }
+        foreach ($this->products as $product)
+        {
+            if (!empty($product->discount_start_date) && !empty($product->discount_end_date))
+            {
+                if (Carbon::now()->between(dateTimeFormatYmdHi($product->discount_start_date), dateTimeFormatYmdHi($product->discount_end_date)))
+                {
+                    $product->has_discount_validity = 'true';
+                }
+            } else {
+                $product->has_discount_validity = 'false';
+            }
+            $product->image = asset($product->image);
+
+            $product->order_status = ViewHelper::checkIfProductIsPurchased($product);
+        }
+
+        $product_sliders = Advertisement::whereStatus(1)->whereContentType('book')->select('id', 'title', 'content_type', 'description','link','image')->take(6)->get();
+
+        $this->data = [
+            'products'  => $this->products,
+            'product_sliders'  => $product_sliders,
+        ];
+        return ViewHelper::checkViewForApi($this->data, 'frontend.product.all-products');
+    }
+
+    public function ebookCart ($id)
+    {
+        $data = Product::find($id);
+        if(!$data){
+            return response()->json([
+                'status'   => false,
+                'message'   => "Data not found!",
+            ], 404);
+        }
+        // dd($this->data);
+        return response()->json([
+            'cartContents'  => $data,
+            'subTotal'      => $data->price,
+            'total'         => $data->price,
         ],200);
 
     }

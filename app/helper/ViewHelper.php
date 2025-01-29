@@ -12,6 +12,7 @@ use App\Models\Backend\Course\Course;
 use App\Models\Backend\Course\CourseClassExamResult;
 use App\Models\Backend\Course\CourseExamResult;
 use App\Models\Backend\Course\CourseSection;
+use App\Models\Backend\Course\CourseSectionContent;
 use App\Models\Backend\ExamManagement\ExamOrder;
 use App\Models\Backend\ExamManagement\SubscriptionOrder;
 use App\Models\Backend\OrderManagement\ParentOrder;
@@ -274,8 +275,12 @@ class ViewHelper
 
     public static function checkCourseExamParticipateStatus($contentId)
     {
+        if (str_contains(url()->current(), '/api/'))
+        {
+            self::$loggedUser = auth('sanctum')->user();
+        };
         self::$status = 'false';
-        $existExamResult = CourseExamResult::where(['course_section_content_id' => $contentId, 'user_id' => ViewHelper::loggedUser()->id])->first();
+        $existExamResult = CourseExamResult::where(['course_section_content_id' => $contentId, 'user_id' => self::$loggedUser->id])->first();
         if (!empty($existExamResult))
         {
             return self::$status = 'true';
@@ -286,7 +291,7 @@ class ViewHelper
     public static function checkBatchExamParticipateStatus($contentId)
     {
         self::$status = 'false';
-        $existExamResult = BatchExamResult::where(['batch_exam_section_content_id' => $contentId, 'user_id' => ViewHelper::loggedUser()->id])->first();
+        $existExamResult = BatchExamResult::where(['batch_exam_section_content_id' => $contentId, 'user_id' => auth()->id()])->first();
         if (!empty($existExamResult))
         {
             return self::$status = 'true';
@@ -437,4 +442,34 @@ class ViewHelper
         $paginator->setCollection(collect($currentPageCourses));
         return $paginator;
     }
+
+    public static function courseResultProgress($contentId)
+    {
+        if (str_contains(url()->current(), '/api/'))
+        {
+            self::$loggedUser = auth('sanctum')->user();
+        };
+        $content = CourseSectionContent::select('exam_total_questions', 'exam_per_question_mark')
+                    ->find($contentId);
+
+        if (!$content) {
+            return 0; // Direct return
+        }
+
+        $total = $content->exam_total_questions * $content->exam_per_question_mark;
+
+        $examResult = courseExamResult::select('total_provided_ans', 'total_right_ans', 'total_wrong_ans')
+                        ->where('course_section_content_id', $contentId)
+                        ->where('user_id', self::$loggedUser->id)
+                        ->first();
+
+        if (!$examResult || $total == 0) {
+            return 'false'; // Direct return
+        }
+
+        // Calculate individual percentages
+        return round(($examResult->total_provided_ans / $total) * 100);
+    }
+
+
 }
