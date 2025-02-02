@@ -16,6 +16,7 @@ use App\Models\Backend\Course\CourseSectionContent;
 use App\Models\Backend\ExamManagement\ExamOrder;
 use App\Models\Backend\ExamManagement\SubscriptionOrder;
 use App\Models\Backend\OrderManagement\ParentOrder;
+use App\Models\ContentSeen;
 use App\Models\Frontend\CourseOrder\CourseOrder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
@@ -469,6 +470,163 @@ class ViewHelper
 
         // Calculate individual percentages
         return round(($examResult->total_provided_ans / $total) * 100);
+    }
+
+    public static function userSubscriptionStatus()
+    {
+        if (self::authCheck())
+        {
+            self::$loggedUser = ViewHelper::loggedUser();
+            $subscriptions = ParentOrder::with('batchExamSubscription')
+                ->where('ordered_for', 'batch_exam')
+                ->where('user_id', self::$loggedUser->id)
+                ->where('status', '!=', 'canceled')
+                ->get();
+
+            foreach ($subscriptions as $subscription) {
+                if($subscription->batch_exam_subscription_id == null || $subscription->batch_exam_subscription_id == 0){
+                    return 'true';
+                }elseif ($subscription->batchExamSubscription) {
+                    $packageDuration = $subscription->batchExamSubscription->package_duration_in_days ?? 0;
+                    // Ensure $subscription->order_date is a Carbon instance
+                    $orderDate = \Carbon\Carbon::parse($subscription->order_date);
+                    // Calculate expiration date
+                    $expireDate = $orderDate->copy()->addDays($packageDuration);
+                    // Check if subscription is still valid
+                    if (now()->lessThan($expireDate)) {
+                        return "true";
+                    }else{
+                        return "false";
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    public static function calculateProgressPercentage($courseId){
+
+        self::$loggedUser = ViewHelper::loggedUser();
+        $totalContentCount = CourseSectionContent::whereIn('content_type', ['video', 'exam', 'written_exam'])
+            ->whereHas('courseSection', function ($query) use ($courseId) {
+                $query->where('course_id', $courseId);
+            })
+            ->count();
+        $seenContentCount = ContentSeen::where('user_id', self::$loggedUser->id)
+            ->where('content_type', 'course')
+            ->whereHas('courseSectionContent', function ($query) use ($courseId) {
+                $query->whereIn('content_type', ['video', 'exam', 'written_exam'])
+                    ->whereHas('courseSection', function ($subQuery) use ($courseId) {
+                        $subQuery->where('course_id', $courseId);
+                    });
+            })
+            ->count();
+        return  $progressPercentage = $totalContentCount > 0 ? round(($seenContentCount / $totalContentCount) * 100, 2) : 0;
+    }
+
+    public static function calculateExamProgressPercentage($batchExamId){
+
+        self::$loggedUser = ViewHelper::loggedUser();
+        $totalContentCount = BatchExamSectionContent::whereIn('content_type', ['video', 'exam', 'written_exam'])
+            ->whereHas('BatchExamSection', function ($query) use ($batchExamId) {
+                $query->where('batch_exam_id', $batchExamId);
+            })
+            ->count();
+        $seenContentCount = ContentSeen::where('user_id', self::$loggedUser->id)
+            ->where('content_type', 'batch_exam')
+            ->whereHas('batchExamSectionContent', function ($query) use ($batchExamId) {
+                $query->whereIn('content_type', ['video', 'exam', 'written_exam'])
+                    ->whereHas('BatchExamSection', function ($subQuery) use ($batchExamId) {
+                        $subQuery->where('batch_exam_id', $batchExamId);
+                    });
+            })
+            ->count();
+        return  $progressPercentage = $totalContentCount > 0 ? round(($seenContentCount / $totalContentCount) * 100, 2) : 0;
+    }
+
+
+    public static function getUserCourseProgressReport()
+    {
+        self::$loggedUser = ViewHelper::loggedUser();
+        $userId = self::$loggedUser->id;
+
+        // Get all purchased courses
+        $purchasedCourses = ParentOrder::where([
+                'user_id' => $userId,
+                'ordered_for' => 'course'
+            ])
+            ->where('status', '!=', 'canceled')
+            ->pluck('parent_model_id'); // Get course IDs
+
+        // Total content count for purchased courses
+        $totalContentCount = CourseSectionContent::whereIn('course_section_id', function ($query) use ($purchasedCourses) {
+                $query->select('id')
+                    ->from('course_sections')
+                    ->whereIn('course_id', $purchasedCourses);
+            })
+            ->whereIn('content_type', ['video', 'exam', 'written_exam'])
+            ->count();
+
+        // Seen content count from ContentSeen table
+        $seenContentCount = ContentSeen::where('user_id', $userId)
+            ->whereHas('courseSectionContent', function ($query) use ($purchasedCourses) {
+                $query->whereIn('content_type', ['video', 'exam', 'written_exam'])
+                    ->whereHas('courseSection', function ($subQuery) use ($purchasedCourses) {
+                        $subQuery->whereIn('course_id', $purchasedCourses);
+                    });
+            })
+            ->count();
+
+        // Calculate progress percentage
+        $progressPercentage = $totalContentCount > 0 ? round(($seenContentCount / $totalContentCount) * 100, 2) : 0;
+
+        return [
+            'total_content' => $totalContentCount,
+            'seen_content' => $seenContentCount,
+            'progress_percentage' => $progressPercentage
+        ];
+    }
+
+    public static function getUserExamProgressReport()
+    {
+        self::$loggedUser = ViewHelper::loggedUser();
+        $userId = self::$loggedUser->id;
+
+        // Get all purchased courses
+        $purchasedCourses = ParentOrder::where([
+                'user_id' => $userId,
+                'ordered_for' => 'batch_exam'
+            ])
+            ->where('status', '!=', 'canceled')
+            ->pluck('parent_model_id'); // Get course IDs
+
+        // Total content count for purchased courses
+        $totalContentCount = BatchExamSectionContent::whereIn('batch_exam_section_id', function ($query) use ($purchasedCourses) {
+                $query->select('id')
+                    ->from('batch_exam_sections')
+                    ->whereIn('batch_exam_id', $purchasedCourses);
+            })
+            ->whereIn('content_type', ['video', 'exam', 'written_exam'])
+            ->count();
+
+        // Seen content count from ContentSeen table
+        $seenContentCount = ContentSeen::where('user_id', $userId)
+            ->whereHas('batchExamSectionContent', function ($query) use ($purchasedCourses) {
+                $query->whereIn('content_type', ['video', 'exam', 'written_exam'])
+                    ->whereHas('BatchExamSection', function ($subQuery) use ($purchasedCourses) {
+                        $subQuery->whereIn('batch_exam_id', $purchasedCourses);
+                    });
+            })
+            ->count();
+
+        // Calculate progress percentage
+        $progressPercentage = $totalContentCount > 0 ? round(($seenContentCount / $totalContentCount) * 100, 2) : 0;
+
+        return [
+            'total_content' => $totalContentCount,
+            'seen_content' => $seenContentCount,
+            'progress_percentage' => $progressPercentage
+        ];
     }
 
 

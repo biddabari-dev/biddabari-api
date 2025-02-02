@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Backend\AdditionalFeatureManagement\Affiliation\AffiliationHistory;
 use App\Models\Backend\AdditionalFeatureManagement\Affiliation\AffiliationRegistration;
 use App\Models\Backend\BatchExamManagement\BatchExam;
+use App\Models\Backend\BatchExamManagement\BatchExamSection;
 use App\Models\Backend\BatchExamManagement\BatchExamSectionContent;
 use App\Models\Backend\BatchExamManagement\BatchExamSubscription;
 use App\Models\Backend\Course\Course;
@@ -32,7 +33,7 @@ use Illuminate\Support\Facades\DB;
 
 class StudentController extends Controller
 {
-    protected $data = [], $courseOrders = [], $myCourses = [], $myProfile, $myPayments = [], $loggedUser, $course, $courses = [], $courseSections, $notices = [];
+    protected $data = [], $courseOrders = [], $myCourses = [], $myProfile, $myPayments = [], $loggedUser, $course, $courses = [], $courseSections, $sectionContent, $notices = [];
     protected $hasValidSubscription, $exam, $exams = [], $tempExamArray = [], $examOrders = [], $order, $orders = [], $products = [], $product, $affiliateRegister;
 
     public function dashboard ()
@@ -66,6 +67,11 @@ class StudentController extends Controller
             ->first();
         });
 
+         // course progress
+         $courseProgressReport = ViewHelper::getUserCourseProgressReport();
+         // exam progress
+         $examProgressReport = ViewHelper::getUserExamProgressReport();
+
         $this->data = [
             'orders'                    => $this->orders,
             'total_order'               => $order->total_order ?? 0,
@@ -73,6 +79,8 @@ class StudentController extends Controller
             'totalEnrolledExams'        => $order->exam_order ?? 0,
             'totalPurchasedProducts'    => $order->product_order ?? 0,
             'totalPendingOrders'        => $order->total_pending_orders ?? 0,
+            'courseProgressReport'      => $courseProgressReport,
+            'examProgressReport'        => $examProgressReport,
         ];
 
         return ViewHelper::checkViewForApi($this->data, 'frontend.student.dashboard.dashboard');
@@ -81,17 +89,27 @@ class StudentController extends Controller
     public function myCourses ()
     {
         //$this->courseOrders = ParentOrder::where(['user_id'=> auth()->id(), 'ordered_for' => 'course'])->where('status', '!=', 'canceled')->select('id', 'parent_model_id', 'user_id', 'status')->with('course:id,title,price,banner,slug,status')->get();
-        $this->courseOrders = Cache::remember("user_".auth()->id()."_course_orders", 600, function () {
+        $this->courseOrders = Cache::remember("user_" . auth()->id() . "_course_orders", 60, function () {
             return ParentOrder::where([
-                'user_id' => auth()->id(),
-                'ordered_for' => 'course',
-            ])
-            ->where('status', '!=', 'canceled')
-            ->select('id', 'parent_model_id', 'user_id', 'status')
-            ->with('course:id,title,price,banner,slug,status')
-            ->get();
-        });
+                    'user_id' => auth()->id(),
+                    'ordered_for' => 'course',
+                ])
+                ->where('status', '!=', 'canceled')
+                ->select('id', 'parent_model_id', 'user_id', 'status')
+                ->with(['course:id,title,banner,slug,status'])
+                ->get()
+                ->map(function ($order) {
+                    $courseId = $order->parent_model_id;
 
+                    // Use the helper function to calculate the progress percentage
+                    $progressPercentage = ViewHelper::calculateProgressPercentage($courseId);
+
+                    // Assign the calculated progress percentage to the order
+                    $order->progress_percentage = $progressPercentage;
+
+                    return $order;
+                });
+        });
         $this->data = [
             'courseOrders'  => $this->courseOrders
         ];
@@ -100,49 +118,37 @@ class StudentController extends Controller
 
     public function showCourseContents ($courseId)
     {
-        // $this->course = Course::whereId($courseId)->select('id', 'title', 'slug', 'status')->with(['courseSections' => function($courseSections){
-        //     $courseSections->whereStatus(1)->orderBy('order', 'ASC')->where('available_at', '<=', currentDateTimeYmdHi())->select('id', 'course_id', 'title', 'available_at', 'is_paid')->with(['courseSectionContents' => function($courseSectionContents){
-        //         $courseSectionContents->where('available_at_timestamp', '<=', strtotime(currentDateTimeYmdHi()))->whereStatus(1)->orderBy('order', 'ASC')->get();
-        //     }])->get();
-        // }])->first();
-
-
-        // foreach ($this->course->courseSections as $courseSection)
-        // {
-        //     foreach ($courseSection->courseSectionContents as $courseSectionContent)
-        //     {
-        //         if ($courseSectionContent->written_exam_duration_in_minutes != null) {
-        //             # code...
-        //             $courseSectionContent->written_exam_duration_in_minutes = (int)$courseSectionContent->written_exam_duration_in_minutes;
-        //         }
-
-        //         if ($courseSectionContent->has_class_xm == 1)
-        //         {
-        //             $courseSectionContent->classXmStatus = ViewHelper::checkClassXmStatus($courseSectionContent);
-        //         } else {
-        //             $courseSectionContent->classXmStatus = '0';
-        //         }
-        //     }
-        // }
-
+        $userId = auth()->id(); // Get the logged-in user ID
         $currentTime = currentDateTimeYmdHi();
         $cacheKey = "course_with_sections_{$courseId}_{$currentTime}";
 
-        $this->course = Cache::remember($cacheKey, 600, function () use ($courseId, $currentTime) {
+        $this->course = Cache::remember($cacheKey, 60, function () use ($courseId, $currentTime, $userId) {
             return Course::whereId($courseId)
                 ->select('id', 'title', 'slug', 'status')
                 ->with([
-                    'courseSections' => function ($query) use ($currentTime) {
+                    'courseSections' => function ($query) use ($currentTime, $userId) {
                         $query->whereStatus(1)
                             ->where('available_at', '<=', $currentTime)
                             ->orderBy('order', 'ASC')
                             ->select('id', 'course_id', 'title', 'available_at', 'is_paid')
                             ->with([
-                                'courseSectionContents' => function ($subQuery) use ($currentTime) {
+                                'courseSectionContents' => function ($subQuery) use ($currentTime, $userId) {
                                     $subQuery->where('available_at_timestamp', '<=', strtotime($currentTime))
                                         ->whereStatus(1)
                                         ->orderBy('order', 'ASC')
-                                        ->select('id', 'course_section_id', 'title', 'available_at_timestamp', 'has_class_xm','content_type','video_vendor','video_link'); // Only required fields
+                                        ->select(
+                                            'course_section_contents.id',
+                                            'course_section_contents.course_section_id',
+                                            'course_section_contents.title',
+                                            'course_section_contents.available_at_timestamp',
+                                            'course_section_contents.has_class_xm',
+                                            'course_section_contents.content_type',
+                                            'course_section_contents.video_vendor',
+                                            'course_section_contents.video_link',
+                                            DB::raw("(SELECT COUNT(*) FROM content_seens
+                                                    WHERE content_seens.content_id = course_section_contents.id
+                                                    AND content_seens.user_id = $userId) as is_seen") // Check if user has seen content
+                                        );
                                 },
                             ]);
                     },
@@ -150,8 +156,11 @@ class StudentController extends Controller
                 ->first();
         });
 
+        $progressPercentage = ViewHelper::calculateProgressPercentage($courseId);
+
         $this->data = [
-            'course'    => $this->course
+            'course'    => $this->course,
+            'progressPercentage'    => $progressPercentage,
         ];
         return ViewHelper::checkViewForApi($this->data, 'frontend.student.course.contents');
     }
@@ -190,8 +199,11 @@ class StudentController extends Controller
                     ])->first();
             });
 
+            $progressPercentage = ViewHelper::calculateExamProgressPercentage($batchExamId);
+
             $this->data = [
-                'batchExam'    => $this->exam
+                'batchExam'    => $this->exam,
+                'progressPercentage'    => $progressPercentage
             ];
         }
 
@@ -200,29 +212,31 @@ class StudentController extends Controller
 
     public function myExams ()
     {
-        // $this->loggedUser = ViewHelper::loggedUser();
-        // $this->exams   = ParentOrder::where(['ordered_for' => 'batch_exam', 'user_id' => $this->loggedUser->id])->where('status', '!=', 'canceled')->with([
-        //     'batchExam' => function($batchExam) {
-        //         $batchExam->whereStatus(1)->select('id', 'title', 'banner', 'slug', 'sub_title', 'is_paid', 'is_featured', 'is_approved', 'status', 'is_master_exam')->get();
-        //     }
-        // ])->select('id', 'user_id', 'parent_model_id', 'batch_exam_subscription_id', 'ordered_for', 'status')->get();
-        // foreach ($this->exams as $exam)
-        // {
-        //     $exam->has_validity = ViewHelper::checkIfBatchExamIsEnrollmentAndHasValidity($this->loggedUser, $exam->batchExam);
-        //     $exam->order_status = ViewHelper::checkUserBatchExamIsEnrollment($this->loggedUser, $exam->batchExam);
-        // }
 
         $this->exams = ParentOrder::with([
             'batchExam' => function ($query) {
-                $query->select('id', 'title', 'banner', 'slug', 'sub_title', 'is_paid', 'is_featured', 'is_approved', 'status', 'is_master_exam');
+                $query->select('id', 'title', 'banner', 'slug', 'sub_title', 'is_paid', 'is_featured', 'is_approved', 'status', 'is_master_exam','ending_date_time');
             },
             'batchExamSubscription' // Load subscription for validity check
-        ])->where([
+        ])
+        ->where([
             'ordered_for' => 'batch_exam',
             'user_id' => auth()->id(),
-        ])->where('status', '!=', 'canceled')
-            ->select('id', 'user_id', 'parent_model_id', 'batch_exam_subscription_id', 'ordered_for', 'status')
-            ->get();
+        ])
+        ->where('status', '!=', 'canceled')
+        ->select('id', 'user_id', 'parent_model_id', 'batch_exam_subscription_id', 'ordered_for', 'status','updated_at')
+        ->get()
+        ->map(function ($order) {
+            $batchExamId = $order->parent_model_id;
+
+            // Use the helper function to calculate the progress percentage
+            $progressPercentage = ViewHelper::calculateExamProgressPercentage($batchExamId);
+
+            // Assign the calculated progress percentage to the order
+            $order->progress_percentage = $progressPercentage;
+
+            return $order;
+        });
 
 
         // Add the validity status to each exam
@@ -235,6 +249,74 @@ class StudentController extends Controller
             'exams' => $this->exams
         ];
         return ViewHelper::checkViewForApi($this->data, 'frontend.student.my-pages.exams');
+    }
+
+    public function examsStatistics(Request $request){
+        $this->exams = ParentOrder::where('ordered_for', 'batch_exam')
+        ->where('user_id', auth()->id())
+        ->where('status', '!=', 'canceled')
+        ->with(['batchExam' => function ($query) {
+            $query->where('status', 1)->where('is_master_exam', 0)->select('id', 'title');
+        }])
+        ->select('id', 'user_id', 'parent_model_id', 'ordered_for', 'status')
+        ->get();
+
+        $exam_results = DB::table('batch_exams')
+            ->select(
+                'batch_exams.id as exam_id',
+                'batch_exam_section_contents.title as exam_title',
+                'batch_exam_results.*'
+            )
+            ->join('batch_exam_sections', 'batch_exams.id', '=', 'batch_exam_sections.batch_exam_id')
+            ->join('batch_exam_section_contents', 'batch_exam_sections.id', '=', 'batch_exam_section_contents.batch_exam_section_id')
+            ->join('batch_exam_results', 'batch_exam_section_contents.id', '=', 'batch_exam_results.batch_exam_section_content_id')
+            ->where('batch_exam_results.user_id', auth()->id());
+
+        if (!empty($request->exam_id) && $request->exam_id !== 'all') {
+            $exam_results->where('batch_exams.id', $request->exam_id);
+        }
+
+        if (!empty($request->exam_limit) && $request->exam_limit !== 'all') {
+            $exam_results->take($request->exam_limit);
+        }
+
+        $examResults = $exam_results->get();
+
+        $totalExams = DB::table('parent_orders AS po')
+            ->join('batch_exams AS be', 'be.id', '=', 'po.parent_model_id')
+            ->join('batch_exam_sections AS bes', 'be.id', '=', 'bes.batch_exam_id')
+            ->join('batch_exam_section_contents AS besc', 'bes.id', '=', 'besc.batch_exam_section_id')
+            ->where('besc.content_type', 'exam')
+            ->where('po.user_id', auth()->id())
+            ->where('po.ordered_for', 'batch_exam');
+
+            if (!empty($request->exam_id) && $request->exam_id !== 'all') {
+                $totalExams->where('be.id', $request->exam_id);
+            }
+
+        $totalExams = $totalExams->count();
+
+        // Calculate required statistics
+        $totalAppearedExams = $examResults->count();
+        $totalAbsent = $totalExams - $totalAppearedExams;
+        $totalPassed = $examResults->where('status', 'pass')->count();
+        $totalFailed = $examResults->where('status', 'fail')->count();
+        $totalRightAnswers = $examResults->sum('total_right_ans');
+        $totalWrongAnswers = $examResults->sum('total_wrong_ans');
+
+        $this->data = [
+            'exams' => $this->exams,
+            'total_exams' => $totalExams,
+            'total_present' => $totalAppearedExams,
+            'total_absent' => $totalAbsent,
+            'total_passed' => $totalPassed,
+            'total_failed' => $totalFailed,
+            'total_right_answers' => $totalRightAnswers,
+            'total_wrong_answers' => $totalWrongAnswers,
+            'exam_results' => $examResults
+        ];
+
+        return ViewHelper::checkViewForApi($this->data, 'frontend.student.my-pages.exams_statistics');
     }
 
 
@@ -261,6 +343,15 @@ class StudentController extends Controller
         ];
 
         return ViewHelper::checkViewForApi($this->data, 'frontend.student.my-pages.products');
+    }
+
+    public function myEbook ()
+    {
+        $this->courseOrders = ParentOrder::where(['user_id' => auth()->id(), 'ordered_for' => 'ebook', 'status' => 'approved'])->select('id', 'parent_model_id', 'user_id', 'order_invoice_number','status')->with('product:id,title,pdf')->get();
+        $this->data = [
+            'orders'  => $this->courseOrders
+        ];
+        return ViewHelper::checkViewForApi($this->data, 'frontend.student.my-pages.ebook');
     }
 
     protected function getNestedCategoryExams($examCategory)
@@ -547,4 +638,113 @@ class StudentController extends Controller
         $deliveryCharge = ProductDeliveryOption::where(['status' => 1])->first();
         return \response()->json(['deliveryCharge' => $deliveryCharge->fee ?? 0]);
     }
+
+    // archive exam
+    public function archiveExams(){
+
+        if(ViewHelper::userSubscriptionStatus() != 'true'){
+            return response()->json([
+                'status'   => false,
+                'message'   => "Sorry. You have not access!",
+            ], 404);
+        }
+
+        $currentTime = currentDateTimeYmdHi();
+        $batchExamId = 25;
+        $cacheKey = "batch_exam_with_sections_{$batchExamId}_{$currentTime}";
+        $this->exam = Cache::remember($cacheKey, 600, function () use ($batchExamId, $currentTime) {
+            return BatchExam::whereId($batchExamId)
+                ->select('id', 'title', 'slug', 'status') // Only fetch required fields
+                ->with([
+                    'batchExamSections' => function ($query) use ($currentTime) {
+                        $query->where('available_at', '<=', $currentTime)
+                            ->whereStatus(1)
+                            ->orderBy('order', 'ASC')
+                            ->select('id', 'batch_exam_id', 'title', 'available_at', 'is_paid'); // Only required fields
+
+                    },
+                ])
+                ->first();
+        });
+
+        $examId = 28;
+        $cacheKey = "batch_exam_with_sections_{$examId}_{$currentTime}";
+        $recently_exam = Cache::remember($cacheKey, 600, function () use ($examId, $currentTime) {
+            return BatchExam::whereId($examId)
+                ->select('id', 'title', 'slug', 'status') // Only fetch required fields
+                ->with([
+                    'batchExamSections' => function ($query) use ($currentTime) {
+                        $query->where('available_at', '<=', $currentTime)
+                            ->whereStatus(1)
+                            ->orderBy('order', 'ASC')
+                            ->select('id', 'batch_exam_id', 'title', 'available_at', 'is_paid'); // Only required fields
+
+                    },
+                ])
+                ->first();
+        });
+
+        // Retrieve exams related to the given category ID and eager load subscriptions
+        $allExams = BatchExam::whereHas('batchExamCategories')
+        ->whereIsMasterExam(0)
+        ->whereNull('exam_type')
+        ->select('id', 'title', 'slug', 'banner')
+        ->latest()
+        ->get();
+
+        //  $allExams = BatchExam::with('batchExamSections.batchExamSectionContents')
+        //     ->whereIsMasterExam(0)
+        //     ->select('id', 'title', 'slug', 'banner')
+        //     ->latest()
+        //     ->get();
+
+        return response()->json([
+            'subject_wise_exam' => $this->exam,
+            'recently_exam'     => $recently_exam,
+            'allExams'          => $allExams,
+        ],200);
+
+    }
+
+    public function subjectWiseArchiveExams($id){
+        $currentTime = currentDateTimeYmdHi();
+        $cacheKey = "batch_exam_with_sections_{$id}_{$currentTime}";
+        $this->exam = Cache::remember($cacheKey, now()->addMinutes(1), function () use ($id) {
+            return BatchExamSection::with('batchExamSectionContents:id,batch_exam_section_id,title,available_at_timestamp,is_paid,content_type,exam_total_questions,exam_duration_in_minutes')->where('id',$id)
+                ->select('id','title')
+                ->first();
+        });
+
+        return response()->json(['exams' => $this->exam],200);
+
+    }
+
+    public function batchWiseArchiveExams($id){
+        $currentTime = currentDateTimeYmdHi();
+        $cacheKey = "batch_exam_with_sections_{$id}_{$currentTime}";
+        $this->exam = Cache::remember($cacheKey, now()->addMinutes(1), function () use ($id) {
+        return BatchExam::with([
+                'batchExamSections.batchExamSectionContents' => function ($query) {
+                    $query->select('id', 'batch_exam_section_id', 'title', 'available_at_timestamp', 'is_paid', 'content_type', 'exam_total_questions', 'exam_duration_in_minutes', 'exam_end_time')
+                        ->where('exam_end_time', '<', Carbon::now())
+                        ->where('content_type', 'exam');
+                }
+            ])
+            ->where('id', $id)
+            ->select('id', 'title')
+            ->first();
+        });
+
+        return response()->json(['exams' => $this->exam],200);
+    }
+
+    public function startArichiveExam ($contentId)
+    {
+
+        $this->exam = BatchExamSectionContent::whereId($contentId)->with('questionStores.questionOptions')->first();
+        return response()->json(['exams' => $this->exam],200);
+    }
+
+
+
 }

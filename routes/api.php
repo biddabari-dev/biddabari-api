@@ -118,8 +118,10 @@ Route::prefix('v1')->name('api.')->group(function (){
 
             Route::get('my-courses', [StudentController::class, 'myCourses']);
             Route::get('my-exams', [StudentController::class, 'myExams']);
+            Route::get('exams-statistics', [StudentController::class, 'examsStatistics'])->name('exams-statistics');
             Route::get('my-orders', [StudentController::class, 'myOrders']);
             Route::get('my-products', [StudentController::class, 'myProducts']);
+            Route::get('my-ebook', [StudentController::class, 'myEbook'])->name('my-ebook');
             Route::get('course-contents/{course_id}/{slug?}', [StudentController::class, 'showCourseContents']);
             Route::get('batch-exam-contents/{xm_id}/{master?}/{slug?}', [StudentController::class, 'showBatchExamContents']);
             Route::post('order-exam/{xm_cat_id}', [FrontExamController::class, 'orderXm']);
@@ -143,11 +145,23 @@ Route::prefix('v1')->name('api.')->group(function (){
             Route::get('show-course-exam-answers/{content_id}/{slug?}', [FrontExamController::class, 'showCourseExamAnswers']);
             Route::get('show-class-exam-answers/{content_id}/{slug?}', [FrontExamController::class, 'showCourseClassExamAnswers']);
             Route::get('show-batch-exam-answers/{content_id}/{slug?}', [FrontExamController::class, 'showBatchExamAnswers']);
-
+            // free serivice exam
             Route::get('start-free-exam/{content_id}/{slug?}', [FrontExamController::class, 'startFreeExam'])->name('start-free-exam');
             Route::get('show-practice-exam-answers/{content_id}', [FrontExamController::class, 'showPracticeExamAnswers'])->name('show-practice-exam-answers');
             Route::get('show-practice-exam-ranking/{content_id}', [FrontExamController::class, 'showPracticeExamRanking'])->name('show-practice-exam-ranking');
+            // archive exam
+            Route::get('archive-exams', [StudentController::class, 'archiveExams'])->name('archive-exams');
+            Route::get('subject-wise-exams/{id}', [StudentController::class, 'subjectWiseArchiveExams'])->name('subject-wise-exams');
+            Route::get('batch-wise-exams/{id}', [StudentController::class, 'batchWiseArchiveExams'])->name('batch-wise-exams');
+            Route::get('start-arichive-exam/{content_id}', [StudentController::class, 'startArichiveExam'])->name('start-arichive-exam');
+            Route::get('show-archive-exam-answers/{content_id}', [FrontExamController::class, 'showArchiveExamAnswers'])->name('show-archive-exam-answers');
+            Route::get('show-archive-exam-ranking/{content_id}', [FrontExamController::class, 'showArchiveExamRanking'])->name('show-archive-exam-ranking');
 
+            // practise exam
+            Route::post('get-practice-exam-result/{content_id}', [FrontExamController::class, 'getPracticeExamResult'])->name('get-practice-exam-result');
+            Route::get('show-practice-exam-result/{xm_id}', [FrontExamController::class, 'showPracticeExamResult'])->name('show-practice-exam-result');
+            Route::get('show-practice-exam-answers/{content_id}', [FrontExamController::class, 'showPracticeExamAnswers'])->name('show-practice-exam-answers');
+            Route::get('show-practice-exam-ranking/{content_id}', [FrontExamController::class, 'showPracticeExamRanking'])->name('show-practice-exam-ranking');
 
         });
 
