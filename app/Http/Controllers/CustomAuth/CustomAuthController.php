@@ -102,12 +102,7 @@ class CustomAuthController extends Controller
     {
 
 
-        // $this->validate($request, [
-        //     'mobile'   => ['required','numeric|regex:/^(?:\+88|88)?(01[3-9]\d{8})$/']
-
-        // ]);
-
-            $request['roles'] = 4;
+        $request['roles'] = 4;
         $request['request_form'] = 'student';
         DB::beginTransaction();
         try {
@@ -207,50 +202,50 @@ class CustomAuthController extends Controller
 //        return 'register failed';
     }
 
-    public function sendOtp (Request $request)
+    public function sendOtp(Request $request)
     {
-//        return $request;
         $otpNumber = rand(1000, 9999);
         try {
+            // Check if the user already exists by mobile number
             $existUser = User::whereMobile($request->mobile)->first();
-//            return $existUser;
-            if (!isset($existUser))
-            {
-                //            test two
+
+            // If user does not exist, proceed with sending the OTP
+            if (!isset($existUser)) {
                 $client = new Client();
-                //$body = $client->request('GET', 'http://sms.felnadma.com/api/v1/send?api_key=44516684285595991668428559&contacts=88'.$request->mobile.'&senderid=01844532630&msg=Biddabari+otp+is+'.$otpNumber);
+                $response = $client->request('GET', 'https://msg.elitbuzz-bd.com/smsapi', [
+                    'query' => [
+                        'api_key' => 'C2008649660d0a04f3d0e9.72990969',
+                        'type' => 'text',
+                        'contacts' => $request->mobile,
+                        'senderid' => '8809601011181',
+                        'msg' => "Your OTP for Biddabari is ".$otpNumber.". Please enter this OTP to verify your phone number and don't share with anyone. Helpline 09644433300.",
+                    ]
+                ]);
 
-                $body = $client->request('GET', 'https://msg.elitbuzz-bd.com/smsapi?api_key=C2008649660d0a04f3d0e9.72990969&type=text&contacts='.$request->mobile.'&senderid=8809601011181&msg=Biddabari+otp+is+'.$otpNumber);
+                // Parse response to get the response code
+                $responseCode = explode(':', $response->getBody()->getContents())[1];
 
-                //echo '<pre>'; print_r( explode(':',$body->getBody()->getContents() )[1] ); die();
-                //die($body->getBody()->getContents())[0])[1]);
-
-                $responseCode = explode(':',$body->getBody()->getContents() )[1];
-
-                //$responseCode = explode(':', explode(',', $body->getBody()->getContents())[0])[1];
-//            return response()->json(gettype($responseCode));
-//                return $responseCode;
-
-                //if (isset($responseCode) && !empty($responseCode) && $responseCode === "\"445000\"")
-                if (isset($responseCode) && !empty($responseCode))
-                {
-//                \session()->put('otp', $otpNumber);
-                    session_start();
-                    $_SESSION['otp'] = $otpNumber;
-                    return response()->json(['otp' => $otpNumber, 'status' => 'success', 'user_status' => isset($existUser) ? 'exist' : 'not_exist']);
+                // If OTP sent successfully
+                if (!empty($responseCode)) {
+                    session()->put('otp', $otpNumber); // Use Laravel's session helper
+                    return response()->json(['otp' => $otpNumber, 'status' => 'success', 'user_status' => 'not_exist']);
                 } else {
-                    return response()->json(['status' => 'false']);
+                    return response()->json(['status' => 'false', 'message' => 'Failed to send OTP.']);
                 }
             } else {
+                // User already exists
                 return response()->json([
                     'status' => 'success',
-                    'user_status' => isset($existUser) ? 'exist' : 'not_exist',
+                    'user_status' => 'exist',
                 ]);
             }
 
-        } catch (\Exception $exception)
-        {
-            return response()->json($exception->getMessage());
+        } catch (\Exception $exception) {
+            // Return structured error message for the frontend
+            return response()->json([
+                'status' => 'error',
+                'message' => 'An error occurred while sending OTP. Please try again later.'
+            ], 500); // HTTP 500 Internal Server Error
         }
     }
 
