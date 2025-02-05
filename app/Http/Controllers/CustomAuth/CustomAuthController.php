@@ -17,6 +17,7 @@ use Xenon\LaravelBDSms\Provider\MimSms;
 use Xenon\LaravelBDSms\Sender;
 use App\Http\Requests\Auth\UserRegisterRequest;
 use Hash;
+use Illuminate\Support\Facades\Validator;
 
 class CustomAuthController extends Controller
 {
@@ -86,7 +87,7 @@ class CustomAuthController extends Controller
             }
         }
         if (str()->contains(url()->current(), '/api/')) {
-            return response()->json(['error' => 'Phone no and Password does not match . Please try again.'],500);
+            return response()->json(['error' => 'Phone no and Password does not match . Please try again.'],401);
         } else {
             if ($request->ajax())
             {
@@ -295,8 +296,26 @@ class CustomAuthController extends Controller
 
     public function passResetOtp (Request $request)
     {
-        $otpNumber = rand(100000, 999999);
+        $validator = Validator::make($request->all(), [
+            'mobile' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $user = User::where('mobile', $request->mobile)->first();
+
+        if (!$user) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No user found with this phone number.'
+            ], 404);
+        }
         try {
+            $otpNumber = rand(100000, 999999);
             $client = new Client();
             //$body = $client->request('GET', 'http://sms.felnadma.com/api/v1/send?api_key=44516684285595991668428559&contacts=88'.$request->mobile.'&senderid=01844532630&msg=Biddabari+otp+is+'.$otpNumber);
             $body = $client->request('GET', 'https://msg.elitbuzz-bd.com/smsapi?api_key=C2008649660d0a04f3d0e9.72990969&type=text&contacts='.$request->mobile.'&senderid=8809601011181&msg=Biddabari+otp+is+'.$otpNumber);
@@ -306,28 +325,32 @@ class CustomAuthController extends Controller
             $responseCode = explode(':',$body->getBody()->getContents() )[1];
 
             //if (isset($responseCode) && !empty($responseCode) && $responseCode === "\"445000\"")
-            if (isset($responseCode) && !empty($responseCode))
+            if (!empty($responseCode))
             {
                 session_start();
                 $_SESSION['otp'] = $otpNumber;
                 if (str()->contains(url()->current(), '/api/'))
                 {
                     return response()->json([
-                        'otp'       => $otpNumber,
-                        'encoded_otp'       => base64_encode($otpNumber),
+                        'status'      => 'success',
+                        'otp'         => $otpNumber,
+                        'encoded_otp' => base64_encode($otpNumber),
                         'mobile'    => $request->mobile,
                         'message'   => 'OTP send successfully',
-                    ]);
+                    ],200);
                 }
-                return redirect(url('/password-reset-otp?mn='.$request->mobile.'&oc='.base64_encode($otpNumber)))->with('success', 'OTP send successfully');
             } else {
-                return ViewHelper::returEexceptionError('Invalid Mobile Number or Format. Please Try again.');
-//                return back()->with('error', 'Invalid Mobile Number or Format. Please Try again.');
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Invalid mobile number or format. Please try again.',
+                ], 400);
             }
         } catch (\Exception $exception)
         {
-            return ViewHelper::returEexceptionError('Something went wrong. Please try again');
-//            return redirect()->back()->with('error', 'Something went wrong. Please try again');
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Something went wrong. Please try again.',
+            ], 500);
         }
     }
 
