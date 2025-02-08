@@ -49,6 +49,12 @@ class FrontViewTwoController extends Controller
             ->where('content_type', '!=', 'written_exam')
             ->whereDate('available_at', now())
             ->get();
+            if(!$this->courseClassContents){
+                return response()->json([
+                    'status'   => false,
+                    'message'   => "There are no scheduled classes available today.",
+                ],404);
+            }
 
             $this->data = [
                 'courseClassContents' => $this->courseClassContents
@@ -82,6 +88,12 @@ class FrontViewTwoController extends Controller
                 ])
                 ->get();
 
+            if(!$this->parentOrders){
+                return response()->json([
+                    'status'   => false,
+                    'message'   => "There are no scheduled classes available today.",
+                ],404);
+            }
             // Prepare course exams and batch exams
             $this->courseExams = [];
             $this->batchExams = [];
