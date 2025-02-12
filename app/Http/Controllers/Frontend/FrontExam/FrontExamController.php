@@ -24,7 +24,10 @@ use App\Models\Backend\ExamManagement\ExamResult;
 use App\Models\Backend\OrderManagement\ParentOrder;
 use App\Models\Backend\QuestionManagement\QuestionOption;
 use App\Models\Backend\QuestionManagement\QuestionStore;
+use App\Models\Frontend\AdditionalFeature\ContactMessage;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Validator;
@@ -931,31 +934,121 @@ class FrontExamController extends Controller
 
 
 
-    public function categoryExams ($id, $name = null)
-    {
-        $this->exam = BatchExam::whereId($id)->select('id', 'title', 'description', 'banner',  'status', 'is_paid', 'slug')->with(['batchExamSubscriptions' => function ($package) {
-            $package->whereStatus(1)->select('id', 'batch_exam_id', 'price', 'package_duration_in_days', 'package_title', 'discount_amount', 'discount_start_date', 'discount_end_date')->get();
-        }])->first();
-//        $this->examCategory->validity = Carbon::parse($this->examCategory->valid_from)->format('d-m-Y').' - '. Carbon::parse($this->examCategory->valid_to)->format('d-m-Y');
-        return response()->json([
-            'exam' => $this->exam,
-            'enrollStatus'  => ViewHelper::authCheck() ? ViewHelper::checkIfBatchExamIsEnrollmentAndHasValidity(ViewHelper::loggedUser(),$this->exam) : 'false',
-        ]);
-//        $this->data = [
-//            'examCategories'    => ExamCategory::where(['exam_category_id' => $id, 'status' => 1])->select('id', 'name', 'image', 'status')->get(),
-//            'exams'    => Exam::where(['exam_category_id' => $id, 'status' => 1])->select('id', 'slug', 'title', 'image', 'xm_duration')->get(),
-//        ];
-//        return ViewHelper::checkViewForApi($this->data, 'frontend.exams.xm.category-exams');
+//     public function categoryExams ($id, $name = null)
+//     {
+//         $this->exam = BatchExam::whereId($id)->select('id', 'title', 'description', 'banner',  'status', 'is_paid', 'slug')->with(['batchExamSubscriptions' => function ($package) {
+//             $package->whereStatus(1)->select('id', 'batch_exam_id', 'price', 'package_duration_in_days', 'package_title', 'discount_amount', 'discount_start_date', 'discount_end_date')->get();
+//         }])->first();
+// //        $this->examCategory->validity = Carbon::parse($this->examCategory->valid_from)->format('d-m-Y').' - '. Carbon::parse($this->examCategory->valid_to)->format('d-m-Y');
+//         return response()->json([
+//             'exam' => $this->exam,
+//             'enrollStatus'  => ViewHelper::authCheck() ? ViewHelper::checkIfBatchExamIsEnrollmentAndHasValidity(ViewHelper::loggedUser(),$this->exam) : 'false',
+//         ]);
+// //        $this->data = [
+// //            'examCategories'    => ExamCategory::where(['exam_category_id' => $id, 'status' => 1])->select('id', 'name', 'image', 'status')->get(),
+// //            'exams'    => Exam::where(['exam_category_id' => $id, 'status' => 1])->select('id', 'slug', 'title', 'image', 'xm_duration')->get(),
+// //        ];
+// //        return ViewHelper::checkViewForApi($this->data, 'frontend.exams.xm.category-exams');
+//     }
+
+    public function categoryExams($id = null) {
+
+        $category = BatchExamCategory::where('id', $id)
+            ->select('id', 'name', 'parent_id', 'slug', 'status', 'image') // Fields to select from BatchExamCategory
+            ->with([
+                'batchExams' => function ($exam) {
+                    $exam->where('status', 1)
+                        ->select('id', 'title', 'banner', 'slug', 'price', 'discount_type', 'discount_amount','discount_start_date','discount_end_date', 'admission_last_date', 'batch_exam_category_id');
+                },
+                'batchExamCategories' => function ($batchExamCategories) { // Assuming 'subCategories' is the relationship for child categories
+                    $batchExamCategories->where('status', 1)
+                        ->orderBy('order', 'ASC')
+                        ->select('id', 'parent_id', 'name', 'slug', 'image', 'status');
+                }
+            ])
+            ->first();
+
+            if ($category) {
+                $now = Carbon::now();
+                $category->batchExams->each(function ($exam) use ($now) {
+                    $exam->has_discount_validity = false;
+                    if (!empty($exam->discount_start_date) && !empty($exam->discount_end_date)) {
+                        $discountStart = Carbon::parse($exam->discount_start_date);
+                        $discountEnd = Carbon::parse($exam->discount_end_date);
+
+                        if ($now->between($discountStart, $discountEnd)) {
+                            $exam->has_discount_validity = true;
+                        }
+                    }
+                });
+            }
+        if (!$category) {
+            return response()->view('errors.404', [], 404);
+        }
+
+        $this->data = ['category' => $category];
+
+        return ViewHelper::checkViewForApi($this->data, 'frontend.exams.xm.exam-category', 'Category Not Found');
     }
 
+    // public function viewExamDetails($id, $slug = null)
+    // {
+    //     $this->exam = BatchExam::find($id);
+    //     $this->data = [
+    //         'exam'  => $this->exam,
+    //         'enrollStatus'  => ViewHelper::checkUserBatchExamIsEnrollment(ViewHelper::loggedUser(),$this->exam)
+    //     ];
+    //     return ViewHelper::checkViewForApi($this->data, 'frontend.exams.xm.details');
+    // }
     public function viewExamDetails($id, $slug = null)
     {
-        $this->exam = Exam::find($id);
+
+        $this->exam = BatchExam::select('id', 'title', 'slug', 'price', 'banner', 'discount_type', 'discount_amount', 'discount_start_date', 'discount_end_date', 'admission_last_date', 'package_duration_in_days','is_paid')
+            ->where('id', $id)
+            ->first();
+
+        if(!$this->exam){
+            return response()->view('errors.404', [], 404);
+        }
+
+        $now = Carbon::now();
+        $this->exam->has_discount_validity = 'false';
+
+        if (!empty($this->exam->discount_start_date) && !empty($this->exam->discount_end_date)) {
+            $discountStart = Carbon::parse($this->exam->discount_start_date);
+            $discountEnd = Carbon::parse($this->exam->discount_end_date);
+
+            if ($now->between($discountStart, $discountEnd)) {
+                $this->exam->has_discount_validity = 'true';
+            }
+        }
+
+        $totalStudentEnrollments = DB::table('batch_exam_student')->where('batch_exam_id', $this->exam->id)->count('student_id');
+        $batchExam = BatchExam::where('id', $id)->select('id', 'slug')->first();
+        $batchExamSection = BatchExam::whereId($batchExam->id)
+            ->select('id', 'title', 'slug', 'status')
+            ->with(['batchExamSections' => function($batchExamSections){
+                $batchExamSections->whereStatus(1)
+                    ->where('available_at', '<=', currentDateTimeYmdHi())
+                    ->orderBy('order', 'ASC')
+                    ->select('id', 'batch_exam_id', 'title', 'available_at', 'is_paid')
+                    ->with(['batchExamSectionContents' => function($batchExamSectionContents){
+                        $batchExamSectionContents->where('available_at_timestamp', '<=', strtotime(currentDateTimeYmdHi()))
+                            ->whereIn('content_type', ['exam', 'written_exam'])
+                            ->whereStatus(1)
+                            ->orderBy('order', 'ASC')
+                            ->get();
+                    }]);
+            }])->first();
+
         $this->data = [
             'exam'  => $this->exam,
-            'enrollStatus'  => ViewHelper::checkUserBatchExamIsEnrollment(ViewHelper::loggedUser(),$this->exam)
+            'batchExamSection'  => $batchExamSection,
+            'totalStudentEnrollments'  => $totalStudentEnrollments,
+            'enrollStatus'  => ViewHelper::checkUserBatchExamIsEnrollment(ViewHelper::loggedUser(),$this->exam),
+            'comments' => ContactMessage::where(['status' => 1, 'type' => 'batch_exam', 'parent_model_id' => $this->exam->id, 'is_seen' => 1])->get(),
         ];
-        return ViewHelper::checkViewForApi($this->data, 'frontend.exams.xm.details');
+        return ViewHelper::checkViewForApi($this->data);
     }
 
     public function orderXm (Request $request, $id)
