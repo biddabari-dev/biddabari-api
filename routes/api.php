@@ -66,7 +66,7 @@ Route::prefix('v1')->name('api.')->group(function (){
 
     Route::get('/all-exams', [FrontExamController::class, 'showAllExams']);
     // Route::get('/exam-details/{slug?}', [FrontExamController::class, 'viewExamDetails'])->middleware('log.user.activity')->name('view-exam');
-    Route::get('/exam-details/{slug?}', [FrontExamController::class, 'viewExamDetails'])->middleware('log.user.activity')->name('view-exam');
+    Route::get('/exam-details/{slug?}', [FrontExamController::class, 'viewExamDetails'])->name('view-exam');
     Route::get('/category-exams/{xm_cat_id}/{name?}', [FrontExamController::class, 'categoryExams']);
 
 
