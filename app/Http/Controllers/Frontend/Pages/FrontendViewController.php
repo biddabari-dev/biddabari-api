@@ -61,7 +61,7 @@ class FrontendViewController extends Controller
 
     public function productDetails($id)
     {
-        $this->product = Product::with('productAuthor')->where('id',$id)->select('id', 'product_author_id', 'title', 'image', 'featured_pdf', 'pdf', 'slug', 'description','price','discount_amount','discount_start_date','discount_end_date','about','specification','other_details' , 'stock_amount', 'is_featured', 'status')->first();
+        $this->product = Product::with('productAuthor')->where('id',$id)->select('id', 'product_author_id', 'title', 'image', 'featured_pdf', 'pdf', 'slug', 'description','price','discount_amount','discount_start_date','discount_end_date','about','specification','other_details','description', 'stock_amount', 'is_featured', 'status')->first();
         if(!$this->product){
             return response()->json([
                 'status'   => false,

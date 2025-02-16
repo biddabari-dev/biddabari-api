@@ -1003,7 +1003,7 @@ class FrontExamController extends Controller
     public function viewExamDetails($id, $slug = null)
     {
 
-        $this->exam = BatchExam::select('id', 'title', 'slug', 'price', 'banner', 'discount_type', 'discount_amount', 'discount_start_date', 'discount_end_date', 'admission_last_date', 'package_duration_in_days','is_paid')
+        $this->exam = BatchExam::select('id', 'title', 'slug', 'price', 'banner', 'discount_type', 'discount_amount', 'discount_start_date', 'discount_end_date', 'admission_last_date', 'package_duration_in_days','is_paid','	description')
             ->where('id', $id)
             ->first();
 
