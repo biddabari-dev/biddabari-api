@@ -415,10 +415,11 @@ class StudentController extends Controller
 
     public function viewProfile ()
     {
+
         $isStudent = false;
         $isTeacher = false;
         $isStuff = false;
-        $user = auth()->user();
+        $user = ViewHelper::loggedUser();
         if (!empty($user->roles))
         {
             foreach ($user->roles as $role)
@@ -453,7 +454,7 @@ class StudentController extends Controller
     public function profileUpdate (Request $request)
     {
         $isStudent = false;
-        $user = auth()->user();
+        $user = ViewHelper::loggedUser();
         if (!empty($user->roles))
         {
             foreach ($user->roles as $role)
