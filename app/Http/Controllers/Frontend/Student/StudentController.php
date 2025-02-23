@@ -143,6 +143,8 @@ class StudentController extends Controller
                                             'course_section_contents.available_at_timestamp',
                                             'course_section_contents.has_class_xm',
                                             'course_section_contents.content_type',
+                                            'course_section_contents.pdf_file',
+                                            'course_section_contents.note_content',
                                             'course_section_contents.video_vendor',
                                             'course_section_contents.video_link',
                                             DB::raw("(SELECT COUNT(*) FROM content_seens
