@@ -194,7 +194,7 @@ class StudentController extends Controller
                                             ->whereStatus(1)
                                             ->whereIsPaid(1)
                                             ->orderBy('order', 'ASC')
-                                            ->select('id', 'batch_exam_section_id', 'title', 'available_at_timestamp', 'is_paid','content_type'); // Only required fields
+                                            ->select('id', 'batch_exam_section_id', 'title', 'available_at_timestamp', 'is_paid','content_type','pdf_file','note_content'); // Only required fields
                                     },
                                 ]);
                         },
