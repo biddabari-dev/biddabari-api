@@ -918,7 +918,7 @@ class FrontExamController extends Controller
             'status' => 1,
             'is_master_exam' => 0,
             'is_paid' => 1
-        ])->select('id', 'title', 'banner', 'slug', 'price', 'discount_type', 'discount_amount', 'admission_last_date')->paginate(20);
+        ])->select(['id', 'title', 'banner', 'slug', 'price', 'discount_type', 'discount_amount', 'admission_last_date', 'discount_start_date', 'discount_end_date'])->paginate(20);
 
         $exam_sliders = Advertisement::whereStatus(1)->whereContentType('exam')->select('id', 'title', 'content_type', 'description','link','image')->take(6)->get();
 
