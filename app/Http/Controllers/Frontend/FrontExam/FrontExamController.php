@@ -836,6 +836,7 @@ class FrontExamController extends Controller
         return ViewHelper::checkViewForApi($this->data, 'frontend.exams.course.result');
     }
 
+
     public function showCourseClassExamResult ($xmId, $xmResultId = null)
     {
         $this->exam = CourseSectionContent::whereId($xmId)->first();
@@ -1487,7 +1488,7 @@ class FrontExamController extends Controller
             }
         }
     }
-    public function showCourseExamRanking($contentId)
+   /* public function showCourseExamRanking($contentId)
     {
         $this->courseExamResults = CourseExamResult::where(['course_section_content_id' => $contentId])->orderBy('result_mark', 'DESC')->orderBy('required_time', 'ASC')->with(['courseSectionContent' => function($courseSectionContent) {
             $courseSectionContent->select('id',  'course_section_id', 'exam_total_questions','exam_per_question_mark', 'written_total_questions','exam_duration_in_minutes','written_exam_duration_in_minutes')->first();
@@ -1510,7 +1511,23 @@ class FrontExamController extends Controller
             // 'total_question'=>count(CourseSectionContent::where('course_section_id',$contentId)->get())
         ];
         return ViewHelper::checkViewForApi($this->data, 'frontend.exams.course.show-ranking');
+    }*/
+
+    public function showCourseExamRanking($contentId)
+    {
+        $this->courseExamResults = CourseExamResult::where(['course_section_content_id' => $contentId])->orderBy('result_mark', 'DESC')->orderBy('required_time', 'ASC')->with(['courseSectionContent' => function($courseSectionContent) {
+            $courseSectionContent->select('id',  'course_section_id', 'exam_total_questions','exam_per_question_mark', 'written_total_questions')->first();
+        },
+            'user'])->paginate(100);
+
+        //return $this->courseExamResults;
+        $this->data = [
+            'courseExamResults'     => $this->courseExamResults,
+        ];
+        return ViewHelper::checkViewForApi($this->data, 'frontend.exams.course.show-ranking');
     }
+
+
     public function showBatchExamRanking($contentId)
     {
         $this->courseExamResults = BatchExamResult::where(['batch_exam_section_content_id' => $contentId])->orderBy('result_mark', 'DESC')->orderBy('required_time', 'ASC')->with(['batchExamSectionContent' => function($batchExamSectionContent) {
