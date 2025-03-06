@@ -170,21 +170,32 @@ class UserController extends Controller
         ]);
     }
 
-    public function studentChangePassword(Request $request, $id)
+    public function studentChangePasswordApi(Request $request, $id)
     {
-        abort_if(Gate::denies('admin-form-user-change-password'), Response::HTTP_FORBIDDEN, '403 Forbidden');
-        $this->user = User::find($id);
-        if (password_verify($request->old_password, $this->user->password))
-        {
-            if ($request->new_password == $request->confirm_password)
-            {
-                $this->user->update(['password' => Hash::make($request->new_password)]);
-                return back()->with('success', 'Password Changed successfully.');
-            } else {
-                return back()->with('error', 'Password Mismatch. Please Try again.');
-            }
+
+        $request->validate([
+            'old_password' => 'required',
+            'new_password' => 'required|min:6',
+            'confirm_password' => 'required|same:new_password',
+        ]);
+
+        $user = User::find($id);
+
+        // Check if the old password matches
+        if (Hash::check($request->old_password, $user->password)) {
+            // Update password
+            $user->password = bcrypt($request->new_password);
+            $user->save();
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'User Updated Password'
+            ]);
         } else {
-            return back()->with('error', 'Invalid Password. Please Try again.');
+            return response()->json([
+                'status' => 204,
+                'message' => 'Not Updated Password'
+            ]);
         }
     }
 

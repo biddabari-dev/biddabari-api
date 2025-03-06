@@ -165,6 +165,8 @@ Route::prefix('v1')->name('api.')->group(function (){
             Route::get('show-practice-exam-answers/{content_id}', [FrontExamController::class, 'showPracticeExamAnswers'])->name('show-practice-exam-answers');
             Route::get('show-practice-exam-ranking/{content_id}', [FrontExamController::class, 'showPracticeExamRanking'])->name('show-practice-exam-ranking');
 
+            Route::post('change-password/{id}', [UserController::class, 'studentChangePasswordApi'])->name('change-password');
+
         });
 
 //        delete user route for app production
