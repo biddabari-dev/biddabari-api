@@ -321,6 +321,77 @@ class StudentController extends Controller
         return ViewHelper::checkViewForApi($this->data, 'frontend.student.my-pages.exams_statistics');
     }
 
+    public function courseStatistics(Request $request){
+
+        $this->course = ParentOrder::where([
+            'user_id' => auth()->id(),
+            'ordered_for' => 'course',
+        ])
+            ->where('status', '!=', 'canceled')
+            ->select('id', 'parent_model_id', 'user_id', 'status')
+            ->with(['course:id,title'])
+            ->get();
+
+        $course_results = DB::table('courses')
+            ->select(
+                'courses.id as course_id',
+                'course_section_contents.title as course_title',
+                'course_exam_results.*'
+            )
+            ->join('course_sections', 'courses.id', '=', 'course_sections.course_id')
+            ->join('course_section_contents', 'course_sections.id', '=', 'course_section_contents.course_section_id')
+            ->join('course_exam_results', 'course_section_contents.id', '=', 'course_exam_results.course_section_content_id')
+            ->where('course_exam_results.user_id', auth()->id());
+
+        if (!empty($request->course_id) && $request->course_id !== 'all') {
+            $course_results->where('courses.id', $request->course_id);
+        }
+
+        if (!empty($request->exam_limit) && $request->exam_limit !== 'all') {
+            $course_results->take($request->exam_limit);
+        }
+
+        $courseResults = $course_results->get();
+
+
+        $totalCourses = DB::table('parent_orders AS po')
+            ->join('courses AS c', 'c.id', '=', 'po.parent_model_id')
+            ->join('course_sections AS cs', 'c.id', '=', 'cs.course_id')
+            ->join('course_section_contents AS csc', 'cs.id', '=', 'csc.course_section_id') // Fixed alias issue
+            ->whereIn('csc.content_type', ['exam','written_exam','assignment'])
+            ->where('po.user_id', auth()->id())
+            ->where('po.ordered_for', 'course');
+
+
+        if (!empty($request->course_id) && $request->course_id !== 'all') {
+            $totalCourses->where('c.id', $request->course_id);
+        }
+
+        $totalCourses = $totalCourses->count();
+
+        // Calculate required statistics
+        $totalAppearedCourses = $courseResults->count();
+        $totalAbsent = $totalCourses - $totalAppearedCourses;
+        $totalPassed = $courseResults->where('status', 'pass')->count();
+        $totalFailed = $courseResults->where('status', 'fail')->count();
+        $totalRightAnswers = $courseResults->sum('total_right_ans');
+        $totalWrongAnswers = $courseResults->sum('total_wrong_ans');
+
+        $this->data = [
+            'courses' => $this->course,
+            'total_course' => $totalCourses,
+            'total_present' => $totalAppearedCourses,
+            'total_absent' => $totalAbsent,
+            'total_passed' => $totalPassed,
+            'total_failed' => $totalFailed,
+            'total_right_answers' => $totalRightAnswers,
+            'total_wrong_answers' => $totalWrongAnswers,
+            'course_results' => $courseResults
+        ];
+
+        return ViewHelper::checkViewForApi($this->data, 'frontend.student.my-pages.course_statistics');
+
+    }
 
     public function myProducts ()
     {

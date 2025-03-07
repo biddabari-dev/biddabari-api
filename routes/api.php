@@ -121,6 +121,7 @@ Route::prefix('v1')->name('api.')->group(function (){
             Route::get('my-courses', [StudentController::class, 'myCourses']);
             Route::get('my-exams', [StudentController::class, 'myExams']);
             Route::get('exams-statistics', [StudentController::class, 'examsStatistics'])->name('exams-statistics');
+            Route::get('course-statistics', [StudentController::class, 'courseStatistics'])->name('course-statistics');
             Route::get('my-orders', [StudentController::class, 'myOrders']);
             Route::get('my-products', [StudentController::class, 'myProducts']);
             Route::get('my-ebook', [StudentController::class, 'myEbook'])->name('my-ebook');

@@ -370,7 +370,7 @@
             </div>
             <div class="col-lg-6">
                 <video class="border-0" style="width: 100%!important;" height="350" controls>
-                    <source src="{{asset($siteSettings->our_speech_video_url)}}" type="video/mp4">
+                    <source src="{{asset($siteSettings->our_speech_video_url ?? '')}}" type="video/mp4">
                     {{--
                     <source src="movie.ogg" type="video/ogg">--}}
                     Your browser does not support the video tag.
@@ -379,7 +379,7 @@
             <div class="col-lg-6">
                 <div class="card card-body rounded-0 our-speech content-shadow">
 
-                    {!! $siteSettings->our_speech_text !!}
+                    {!! $siteSettings->our_speech_text ?? '' !!}
                 </div>
             </div>
         </div>
