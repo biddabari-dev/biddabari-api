@@ -144,6 +144,10 @@ Route::prefix('v1')->name('api.')->group(function (){
             Route::get('show-course-class-exam-result/{xm_id}', [FrontExamController::class, 'showCourseClassExamResult']);
             Route::get('show-batch-exam-result/{xm_id}', [FrontExamController::class, 'showBatchExamResult']);
 
+            Route::get('get-text-type-content', [StudentController::class, 'getTextTypeContent'])->name('get-text-type-content');
+            Route::get('get-batch-exam-text-type-content', [StudentController::class, 'getBatchExamTextTypeContent'])->name('get-batch-exam-text-type-content');
+
+
             Route::get('today-classes', [FrontViewTwoController::class, 'todayClasses']);
             Route::get('today-exams', [FrontViewTwoController::class, 'todayExams']);
 

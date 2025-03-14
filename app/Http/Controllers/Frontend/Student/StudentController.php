@@ -629,21 +629,36 @@ class StudentController extends Controller
         return view('frontend.student.my-pages.password');
     }
 
-    public function getTextTypeContent (Request $request)
+    public function getTextTypeContent(Request $request)
     {
-        try {
-            $sectionContent = CourseSectionContent::find($request->content_id);
-//            $sectionContent->course_exam_
-            return view('frontend.student.course.contents.show-content-ajax', [
-                'content'   => $sectionContent,
-            ]);
-        } catch (\Exception $exception)
-        {
-            return response()->json($exception->getMessage());
-        }
+        // Fetch the content
+        $sectionContent = CourseSectionContent::find($request->content_id);
 
-//        return response()->json(CourseSectionContent::find($request->content_id));
+        // Return response
+        return response()->json([
+            'success' => true,
+            'data' => $sectionContent,
+            'message' => 'Course content retrieved successfully',
+        ], 200);
     }
+
+
+    public function getBatchExamTextTypeContent(Request $request)
+    {
+        // Fetch the content
+        $batchExamSectionContent = BatchExamSectionContent::find($request->content_id);
+
+        // Return response
+        return response()->json([
+            'success' => true,
+            'data' => $batchExamSectionContent,
+            'message' => 'Batch exam content retrieved successfully',
+        ], 200);
+    }
+
+
+
+
     public function showClassXmAjax (Request $request)
     {
         try {
@@ -669,17 +684,7 @@ class StudentController extends Controller
 //        return response()->json(CourseSectionContent::find($request->content_id));
     }
 
-    public function getBatchExamTextTypeContent (Request $request)
-    {
-        try {
-            return view('frontend.student.batch-exam.contents.show-content-ajax', [
-                'content'   => BatchExamSectionContent::find($request->content_id),
-            ]);
-        } catch (\Exception $exception)
-        {
-            return response()->json($exception->getMessage());
-        }
-    }
+
 
     public function myAffiliation()
     {
