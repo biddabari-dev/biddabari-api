@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Backend\Course\CourseSectionContent;
 use App\Models\Backend\Gallery\Gallery;
 use App\Models\Backend\OrderManagement\ParentOrder;
+use App\Models\Backend\UpdateContent\AuthorityContent;
 use App\Models\Backend\UpdateContent\DailyUpdate;
 use Illuminate\Http\Request;
 
@@ -66,7 +67,7 @@ class FrontViewTwoController extends Controller
     }
 
 
-    public function dailyUpdateBlogDetails ($id){
+    public function dailyUpdateBlogDetails($id){
 
         try {
             $blog = DailyUpdate::where('content_type', 'blog')->where('status', 1)->where('id', $id)->first();
@@ -93,6 +94,58 @@ class FrontViewTwoController extends Controller
 
     }
 
+
+    public function withMukulSir()
+    {
+        try {
+            $guidelines = AuthorityContent::where(['content_type' => 'video', 'status' => 1])->orderBy('id', 'desc')->get();
+            $blogs = AuthorityContent::where(['content_type' => 'blog', 'status' => 1])->orderBy('id', 'desc')->select('id','slug','title','slug','file','created_at')->get();
+            $pdfs = AuthorityContent::where(['content_type' => 'pdf', 'status' => 1])->orderBy('id', 'desc')->get();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Mukul Sir content retrieved successfully.',
+                    'data' => [
+                        'mukul_sir_video_contents' => $guidelines,
+                        'mukul_sir_blog_contents'  => $blogs,
+                        'mukul_sir_pdf_contents'   => $pdfs,
+                    ],
+                ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve Mukul Sir content.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function mukulSirBlogDetails($id)
+    {
+        try {
+            $blog = AuthorityContent::where('content_type', 'blog')->where('status', 1)->where('id', $id)->first();
+
+            if (!$blog) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Mukul Sir Blog not found.',
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Mukul Sir blog details retrieved successfully.',
+                'data' => $blog,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+            'success' => false,
+            'message' => 'Failed to retrieve Mukul Sir blog details.',
+            'error' => $e->getMessage(),
+            ], 500);
+            }
+    }
 
 
     public function todayClasses()
