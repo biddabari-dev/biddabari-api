@@ -9,6 +9,7 @@ use App\Models\Backend\Gallery\Gallery;
 use App\Models\Backend\OrderManagement\ParentOrder;
 use App\Models\Backend\UpdateContent\AuthorityContent;
 use App\Models\Backend\UpdateContent\DailyUpdate;
+use App\Models\Backend\UpdateContent\GuidelineContent;
 use Illuminate\Http\Request;
 
 class FrontViewTwoController extends Controller
@@ -34,10 +35,10 @@ class FrontViewTwoController extends Controller
         return ViewHelper::checkViewForApi($this->data, 'frontend.basic-pages.gallery.gallery-details');
     }
 
-    public function guideline()
+    /*public function guideline()
     {
         return view('frontend.basic-pages.guideline');
-    }
+    }*/
 
 
     public function dailyContent()
@@ -144,7 +145,63 @@ class FrontViewTwoController extends Controller
             'message' => 'Failed to retrieve Mukul Sir blog details.',
             'error' => $e->getMessage(),
             ], 500);
+        }
+    }
+
+
+    public function guidelineContent(){
+
+        try {
+            $guidelines = GuidelineContent::where(['content_type' => 'video', 'status' => 1])->orderBy('id', 'desc')->get();
+            $blogs = GuidelineContent::where(['content_type' => 'blog', 'status' => 1])->orderBy('id', 'desc')->select('id','slug','title','slug','file','created_at')->get();
+            $pdfs = GuidelineContent::where(['content_type' => 'pdf', 'status' => 1])->orderBy('id', 'desc')->get();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Guideline content retrieved successfully.',
+                'data' => [
+                    'guideline_video_contents' => $guidelines,
+                    'guideline_blog_contents'  => $blogs,
+                    'guideline_pdf_contents'   => $pdfs,
+                ],
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+            'success' => false,
+            'message' => 'Failed to retrieve guideline content.',
+            'error' => $e->getMessage(),
+            ], 500);
+        }
+
+    }
+
+
+    public function guidelineBlogDetails($id)
+    {
+        try {
+            $blog = GuidelineContent::where('content_type', 'blog')->where('status', 1)->where('id', $id)->first();
+
+            if (!$blog) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Guideline Blog not found.',
+                ], 404);
             }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Guideline blog details retrieved successfully.',
+                'data' => $blog,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve guideline blog details.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+
     }
 
 

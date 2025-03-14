@@ -99,6 +99,9 @@ Route::prefix('v1')->name('api.')->group(function (){
     Route::get('/daily-update-blog-details/{id}/{slug?}', [FrontViewTwoController::class, 'dailyUpdateBlogDetails'])->name('daily-update-blog-details');
     Route::get('/with-mukul-sir', [FrontViewTwoController::class, 'withMukulSir'])->name('with-mukul-sir');
     Route::get('/mukul-sir-blog-details/{id}/{slug?}', [FrontViewTwoController::class, 'mukulSirBlogDetails'])->name('mukul-sir-blog-details');
+    Route::get('/guideline', [FrontViewTwoController::class, 'guidelineContent'])->name('guideline');
+    Route::get('/guideline-blog-details/{id}/{slug?}', [FrontViewTwoController::class, 'guidelineBlogDetails'])->name('guideline-blog-details');
+
 
     Route::get('get-batch-exam-text-type-content', [StudentController::class, 'getBatchExamTextTypeContent']);
     Route::get('get-delivery-charge-for-app', [StudentController::class, 'getDeliveryChargeForApp']);
