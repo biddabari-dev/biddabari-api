@@ -724,7 +724,7 @@ class StudentController extends Controller
         }
 
         $currentTime = currentDateTimeYmdHi();
-        $batchExamId = 25;
+        $batchExamId = 57;
         $cacheKey = "batch_exam_with_sections_{$batchExamId}_{$currentTime}";
         $this->exam = Cache::remember($cacheKey, 600, function () use ($batchExamId, $currentTime) {
             return BatchExam::whereId($batchExamId)
@@ -741,7 +741,7 @@ class StudentController extends Controller
                 ->first();
         });
 
-        $examId = 28;
+        $examId = 56;
         $cacheKey = "batch_exam_with_sections_{$examId}_{$currentTime}";
         $recently_exam = Cache::remember($cacheKey, 600, function () use ($examId, $currentTime) {
             return BatchExam::whereId($examId)
@@ -758,19 +758,25 @@ class StudentController extends Controller
                 ->first();
         });
 
-        // Retrieve exams related to the given category ID and eager load subscriptions
-        $allExams = BatchExam::whereHas('batchExamCategories')
-        ->whereIsMasterExam(0)
-        ->whereNull('exam_type')
-        ->select('id', 'title', 'slug', 'banner')
-        ->latest()
-        ->get();
-
-        //  $allExams = BatchExam::with('batchExamSections.batchExamSectionContents')
-        //     ->whereIsMasterExam(0)
-        //     ->select('id', 'title', 'slug', 'banner')
-        //     ->latest()
-        //     ->get();
+        $categoryId = 63;
+        $allExams = BatchExam::whereHas('batchExamCategories', function ($query) use ($categoryId) {
+            $query->where('id', '!=', $categoryId);
+        })
+            ->whereIsMasterExam(0)
+            ->with(['batchExamSections.batchExamSectionContentsByAscOrder'])
+            ->latest()
+            ->get()
+            ->map(function ($exam) {
+                return [
+                    'id' => $exam->id,
+                    'title' => $exam->title,
+                    'content_status' => $exam->batchExamSections->contains(function ($section) {
+                        return $section->batchExamSectionContentsByAscOrder
+                            ->where('exam_end_time', '>=', now())
+                            ->isNotEmpty();
+                    }),
+                ];
+            });
 
         return response()->json([
             'subject_wise_exam' => $this->exam,
@@ -781,19 +787,59 @@ class StudentController extends Controller
     }
 
     public function subjectWiseArchiveExams($id){
+
         $currentTime = currentDateTimeYmdHi();
+        $cacheKey = "batch_exam_with_sections_{$id}_{$currentTime}";
+        $this->exam = Cache::remember($cacheKey, 600, function () use ($id, $currentTime) {
+            return BatchExam::whereId($id)
+                ->select('id', 'title', 'slug', 'status') // Only fetch required fields
+                ->with([
+                    'batchExamSections' => function ($query) use ($currentTime) {
+                        $query->where('available_at', '<=', $currentTime)
+                            ->whereStatus(1)
+                            ->orderBy('order', 'ASC')
+                            ->select('id', 'batch_exam_id', 'title', 'available_at', 'is_paid'); // Only required fields
+
+                    },
+                ])
+                ->first();
+        });
+
+
+        /*$currentTime = currentDateTimeYmdHi();
         $cacheKey = "batch_exam_with_sections_{$id}_{$currentTime}";
         $this->exam = Cache::remember($cacheKey, now()->addMinutes(1), function () use ($id) {
             return BatchExamSection::with('batchExamSectionContents:id,batch_exam_section_id,title,available_at_timestamp,is_paid,content_type,exam_total_questions,exam_duration_in_minutes')->where('id',$id)
                 ->select('id','title')
                 ->first();
-        });
+        });*/
 
         return response()->json(['exams' => $this->exam],200);
 
     }
 
     public function batchWiseArchiveExams($id){
+
+        $this->exam = BatchExam::whereHas('batchExamCategories', function ($query) use ($id) {
+            $query->where('id', '!=', $id);
+        })
+            ->whereIsMasterExam(0)
+            ->with(['batchExamSections.batchExamSectionContentsByAscOrder'])
+            ->latest()
+            ->get()
+            ->map(function ($exam) {
+                return [
+                    'id' => $exam->id,
+                    'title' => $exam->title,
+                    'content_status' => $exam->batchExamSections->contains(function ($section) {
+                        return $section->batchExamSectionContentsByAscOrder
+                            ->where('exam_end_time', '>=', now())
+                            ->isNotEmpty();
+                    }),
+                ];
+            });
+
+
         $currentTime = currentDateTimeYmdHi();
         $cacheKey = "batch_exam_with_sections_{$id}_{$currentTime}";
         $this->exam = Cache::remember($cacheKey, now()->addMinutes(1), function () use ($id) {

@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Backend\Course\CourseSectionContent;
 use App\Models\Backend\Gallery\Gallery;
 use App\Models\Backend\OrderManagement\ParentOrder;
+use App\Models\Backend\UpdateContent\DailyUpdate;
 use Illuminate\Http\Request;
 
 class FrontViewTwoController extends Controller
@@ -36,6 +37,63 @@ class FrontViewTwoController extends Controller
     {
         return view('frontend.basic-pages.guideline');
     }
+
+
+    public function dailyContent()
+    {
+        try {
+        $guidelines = DailyUpdate::where(['content_type' => 'video', 'status' => 1])->orderBy('id', 'desc')->get();
+        $blogs = DailyUpdate::where(['content_type' => 'blog', 'status' => 1])->orderBy('id', 'desc')->select('id','slug','title','slug','file','created_at')->get();
+        $pdfs = DailyUpdate::where(['content_type' => 'pdf', 'status' => 1])->orderBy('id', 'desc')->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Daily content retrieved successfully.',
+            'data' => [
+                'video_contents' => $guidelines,
+                'blog_contents'  => $blogs,
+                'pdf_contents'   => $pdfs,
+            ],
+        ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve daily content.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+    public function dailyUpdateBlogDetails ($id){
+
+        try {
+            $blog = DailyUpdate::where('content_type', 'blog')->where('status', 1)->where('id', $id)->first();
+
+            if (!$blog) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Blog not found.',
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Blog details retrieved successfully.',
+                'data' => $blog,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve blog details.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+
+    }
+
+
 
     public function todayClasses()
     {

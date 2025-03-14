@@ -94,6 +94,10 @@ Route::prefix('v1')->name('api.')->group(function (){
     Route::post('/new-comment', [FrontendViewController::class, 'newComment']);
     Route::get('get-video-comments/{content_id}/{type?}', [StudentController::class, 'getVideoComments']);
 
+    // Daily update
+    Route::get('/daily-contents', [FrontViewTwoController::class, 'dailyContent'])->name('daily-contents');
+    Route::get('/daily-update-blog-details/{id}/{slug?}', [FrontViewTwoController::class, 'dailyUpdateBlogDetails'])->name('daily-update-blog-details');
+
 
     Route::get('get-batch-exam-text-type-content', [StudentController::class, 'getBatchExamTextTypeContent']);
     Route::get('get-delivery-charge-for-app', [StudentController::class, 'getDeliveryChargeForApp']);

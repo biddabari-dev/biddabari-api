@@ -25,40 +25,6 @@ class CustomAuthController extends Controller
     public function login(Request $request)
     {
 
-
-        // if (str()->contains(url()->current(), '/api/'))
-        // {
-        //     $pass = rand(10000, 99999);
-
-        //     if(isset($request->name)){
-        //         $check = User::where('mobile',$request->mobile)->first();
-
-        //         if ($check != null) {
-        //             # code...
-        //             $user = Auth::loginUsingId($check->id);
-        //         } else {
-        //             # code...
-        //             $add = new User;
-        //             $add->name = $request->name;
-        //             $add->mobile = $request->mobile;
-        //             $add->password = Hash::make($pass);
-        //             $add->save();
-
-        //             $user = Auth::loginUsingId($add->id);
-        //         }
-
-
-
-        //         return response()->json([
-        //             'user'  => $user,
-        //             'auth_token' => $user->createToken('auth_token')->plainTextToken,
-        //             'status'    => 200
-        //         ]);
-
-        //     }
-
-        // }
-
         if (auth()->attempt($request->only(['mobile', 'password']), $request->remember_me))
         {
             $this->user = auth()->user();
